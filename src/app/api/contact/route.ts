@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await resend.emails.send({
       from: 'BRS India Contact <onboarding@resend.dev>', // Update this after domain verification
-      to: ['brsoffice.india@gmail.com'],
+      to: ['adarshrke2415@gmail.com'],
       subject: `New Contact Inquiry: ${enquiryType} from ${name}`,
       replyTo: email,
       html: `
