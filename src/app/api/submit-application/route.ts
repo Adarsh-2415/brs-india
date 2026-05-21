@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     // 1. ADMIN EMAIL NOTIFICATION
     // ==========================================
     await resend.emails.send({
-      from: 'BRS Admissions <onboarding@resend.dev>', // Replace with your verified domain
+      from: 'BRS Admissions <admissions@brsindia.org.in>',
       to: 'adarshrke2415@gmail.com', // The Admin Email (Testing)
       subject: `New Membership Application: ${fullName}`,
       html: `
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     // 2. USER CONFIRMATION EMAIL
     // ==========================================
     await resend.emails.send({
-      from: 'BRS India <onboarding@resend.dev>', // Replace with your verified domain
+      from: 'BRS India <info@brsindia.org.in>',
       to: email, // The Applicant's Email
       subject: 'Application Received - Battery Research Society of India',
       html: `
