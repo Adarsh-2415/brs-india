@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "Battery Research Society of India | BRS India",
   description:
     "Battery Research Society of India (BRS India) — advancing battery science and electrochemical energy research through collaboration, education, and innovation.",
+  icons: {
+    icon: "/logo_high_res_v4.png",
+    shortcut: "/logo_high_res_v4.png",
+    apple: "/logo_high_res_v4.png",
+  },
 };
 
 export default function RootLayout({

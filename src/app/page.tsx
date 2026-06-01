@@ -14,7 +14,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import HeroBackground from "@/components/HeroBackground";
-import { BorderBeam } from "@/components/BorderBeam";
 import CouncilNetwork from "@/components/CouncilNetwork";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
@@ -132,51 +131,27 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.8 }}
-                className="flex justify-center mt-12"
+                className="flex flex-col sm:flex-row justify-center gap-5 mt-12 items-center"
               >
+                <Link
+                  href="/membership-form"
+                  className="group inline-flex items-center gap-3 rounded-full bg-brs-600 px-10 py-5 text-base font-bold text-white transition-all duration-500 hover:bg-brs-500 hover:scale-110 hover:shadow-[0_0_40px_rgba(217,119,87,0.35)]"
+                >
+                  Become a Member
+                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-2" />
+                </Link>
+
                 <Link
                   href="/about"
                   className="group inline-flex items-center gap-3 rounded-full border border-brs-400/30 bg-brs-400/10 px-10 py-5 text-base font-bold text-white backdrop-blur-md transition-all duration-500 hover:bg-brs-400/20 hover:scale-110 hover:shadow-[0_0_40px_rgba(142,182,155,0.3)] hover:border-brs-400/50"
                 >
                   Learn More
-                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-2" />
                 </Link>
               </motion.div>
             </div>
           </div>
 
-          {/* Hero floating glassmorphism stats */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 1 }}
-            className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:mt-10"
-          >
-            {[
-              { value: "200+", label: "Members" },
-              { value: "50+", label: "Publications" },
-              { value: "15+", label: "Institutions" },
-              { value: "30+", label: "Lectures" },
-            ].map((stat, idx) => (
-              <div
-                key={stat.label}
-                className="relative overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.08] px-6 py-8 backdrop-blur-lg transition-all duration-300 hover:bg-white/[0.13] hover:border-white/[0.2] text-center shadow-xl"
-              >
-                <BorderBeam 
-                  duration={6} 
-                  delay={idx * 1.5}
-                  borderWidth={2.5}
-                  pathLength={120}
-                />
-                <div className="relative z-10 text-2xl font-bold text-brs-100 sm:text-3xl">
-                  {stat.value}
-                </div>
-                <div className="relative z-10 mt-1 text-xs font-semibold text-brs-400/90 tracking-wide uppercase">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </motion.div>
+
         </div>
       </section>
 

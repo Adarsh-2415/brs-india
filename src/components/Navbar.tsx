@@ -19,7 +19,8 @@ const navLinks = [
   { label: "Home",       href: "/" },
   { label: "About Us",   href: "/about" },
   { label: "Council",    href: "/#council" },
-  { label: "Lectures",   href: "/lectures" },
+  { label: "Lecture Series",   href: "/lectures" },
+  { label: "Conferences",      href: "/conferences" },
   { 
     label: "Membership", 
     href: "/membership",
@@ -144,12 +145,7 @@ export default function Navbar() {
 
           {/* ... CTA ... */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <Link
-              href="/membership-form"
-              className="hidden lg:inline-flex items-center gap-2 rounded-full bg-brs-600 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-brs-500 hover:scale-[1.03] hover:shadow-[0_0_28px_rgba(58,125,94,0.45)]"
-            >
-              Become a Member
-            </Link>
+
 
             {/* ... Mobile Hamburger ... */}
             <div className="lg:hidden">

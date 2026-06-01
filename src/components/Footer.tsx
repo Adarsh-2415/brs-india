@@ -33,7 +33,7 @@ export default function Footer() {
                 </div>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-brs-400/60">
+            <p className="mt-4 text-sm leading-relaxed text-white">
               Advancing battery science and electrochemical energy research
               through collaboration and innovation.
             </p>
@@ -41,20 +41,22 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-brs-400/50">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
               Quick Links
             </h3>
             <ul className="mt-4 space-y-2.5">
-              {["About Us", "Council", "Lectures", "Membership"].map((link) => (
+              {["About Us", "Council", "Lecture Series", "Conferences", "Membership"].map((link) => (
                 <li key={link}>
                   <Link
                     href={
                       link === "About Us" ? "/about" :
                         link === "Council" ? "/#council" :
                           link === "Membership" ? "/membership-form" :
-                            `/${link.toLowerCase()}`
+                            link === "Lecture Series" ? "/lectures" :
+                              link === "Conferences" ? "/conferences" :
+                                `/${link.toLowerCase()}`
                     }
-                    className="text-sm text-brs-400/70 transition-colors duration-200 hover:text-brs-100"
+                    className="text-sm text-white transition-colors duration-200 hover:text-brs-500 hover:underline decoration-brs-500 decoration-2 underline-offset-4"
                   >
                     {link}
                   </Link>
@@ -65,10 +67,10 @@ export default function Footer() {
 
           {/* Address */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-brs-400/50">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
               Address
             </h3>
-            <p className="mt-4 text-sm leading-relaxed text-brs-400/70">
+            <p className="mt-4 text-sm leading-relaxed text-white">
               Room No: 318, Level 2,<br />
               Department of Physics,<br />
               IIT Roorkee-247667, Haridwar,<br />
@@ -78,25 +80,25 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-brs-400/50">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
               Contact
             </h3>
             <ul className="mt-4 space-y-3">
               <li className="flex items-start gap-2.5">
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brs-400/40" />
-                <span className="text-sm text-brs-400/70">
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-white" />
+                <span className="text-sm text-white">
                   brsoffice.india@gmail.com
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brs-400/40" />
-                <span className="text-sm text-brs-400/70">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white" />
+                <span className="text-sm text-white">
                   IIT Roorkee, India
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brs-400/40" />
-                <span className="text-sm text-brs-400/70">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-white" />
+                <span className="text-sm text-white">
                   +91-1332-284861
                 </span>
               </li>
