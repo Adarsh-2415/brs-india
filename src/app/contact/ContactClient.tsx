@@ -103,7 +103,10 @@ export default function ContactClient() {
         setCaptchaInput("");
         generateCaptcha();
       } else {
-        alert(`Failed to send message: ${result.error || 'Unknown error'}`);
+        const errMsg = typeof result.error === 'object' && result.error !== null
+          ? (result.error.message || JSON.stringify(result.error))
+          : (result.error || 'Unknown error');
+        alert(`Failed to send message: ${errMsg}`);
       }
     } catch (error) {
       console.error("Submission Error:", error);

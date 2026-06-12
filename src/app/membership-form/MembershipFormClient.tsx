@@ -94,8 +94,31 @@ export default function MembershipFormClient() {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === "membershipTypeDropdown") {
+      if (value.includes("Life Member (Individual)")) setSelectedType("life-individual");
+      else if (value.includes("Life Member (Organization)")) setSelectedType("life-org");
+      else if (value.includes("General Member (Individual)")) setSelectedType("general-individual");
+      else if (value.includes("General Member (Organization)")) setSelectedType("general-org");
+      else if (value.includes("Student/Post-Doctoral Researcher")) setSelectedType("student");
+      else setSelectedType("");
+    }
   };
+
+  useEffect(() => {
+    if (selectedType) {
+      let dropdownValue = "";
+      if (selectedType === "life-individual") dropdownValue = "Life Member (Individual) - Rs. 8,000";
+      else if (selectedType === "life-org") dropdownValue = "Life Member (Organization) - Rs. 24,000";
+      else if (selectedType === "general-individual") dropdownValue = "General Member (Individual) - Rs. 5,000";
+      else if (selectedType === "general-org") dropdownValue = "General Member (Organization) - Rs. 15,000";
+      else if (selectedType === "student") dropdownValue = "Student/Post-Doctoral Researcher - Rs. 2,000";
+      
+      setFormData(prev => ({ ...prev, membershipTypeDropdown: dropdownValue }));
+    }
+  }, [selectedType]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -187,6 +210,8 @@ export default function MembershipFormClient() {
     setTimeout(async () => {
       try {
         const selectedTier = MEMBERSHIP_TYPES.find(t => t.id === selectedType);
+        const finalAmount = selectedTier?.price || getSelectedPrice();
+        const finalTierName = selectedTier?.name || formData.membershipTypeDropdown.split(" - ")[0] || "Unknown Tier";
         
         const response = await fetch('/api/submit-application', {
           method: 'POST',
@@ -195,16 +220,22 @@ export default function MembershipFormClient() {
           },
           body: JSON.stringify({
             ...formData,
-            membershipType: selectedTier?.name || "Unknown Tier",
-            amount: selectedTier?.price || "0"
+            membershipType: finalTierName,
+            amount: finalAmount
           }),
         });
+
+        const result = await response.json().catch(() => ({}));
 
         if (response.ok) {
           setIsProcessing(false);
           setIsSuccess(true);
         } else {
-          console.error("Failed to submit application");
+          console.error("Failed to submit application:", result.error);
+          const errMsg = typeof result.error === 'object' && result.error !== null
+            ? (result.error.message || JSON.stringify(result.error))
+            : (result.error || 'Unknown error');
+          alert(`Failed to submit application: ${errMsg}`);
           setIsProcessing(false);
         }
       } catch (error) {

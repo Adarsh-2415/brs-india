@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     // ==========================================
     // 1. ADMIN EMAIL NOTIFICATION
     // ==========================================
-    await resend.emails.send({
+    const adminEmailResult = await resend.emails.send({
       from: 'BRS Admissions <admissions@brsindia.org.in>',
       to: 'adarshrke2415@gmail.com', // The Admin Email (Testing)
       subject: `New Membership Application: ${fullName}`,
@@ -47,10 +47,18 @@ export async function POST(req: Request) {
       `
     });
 
+    if (adminEmailResult.error) {
+      console.error("Resend Admin Notification Error:", adminEmailResult.error);
+      return NextResponse.json(
+        { error: `Admin Notification Failed: ${adminEmailResult.error.message}` },
+        { status: 500 }
+      );
+    }
+
     // ==========================================
     // 2. USER CONFIRMATION EMAIL
     // ==========================================
-    await resend.emails.send({
+    const userEmailResult = await resend.emails.send({
       from: 'BRS India <info@brsindia.org.in>',
       to: email, // The Applicant's Email
       subject: 'Application Received - Battery Research Society of India',
@@ -63,6 +71,14 @@ export async function POST(req: Request) {
         <p><strong>Battery Research Society of India</strong></p>
       `
     });
+
+    if (userEmailResult.error) {
+      console.error("Resend User Confirmation Error:", userEmailResult.error);
+      return NextResponse.json(
+        { error: `Confirmation Email Failed: ${userEmailResult.error.message}` },
+        { status: 500 }
+      );
+    }
 
     // Simulated Success Response
     return NextResponse.json(
