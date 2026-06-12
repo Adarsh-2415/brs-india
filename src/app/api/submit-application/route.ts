@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     // ==========================================
     const adminEmailResult = await resend.emails.send({
       from: 'BRS Admissions <admissions@brsindia.org.in>',
-      to: 'adarshrke2415@gmail.com', // The Admin Email (Testing)
+      to: ['adarshrke2415@gmail.com', 'brsoffice.india@gmail.com'],
       subject: `New Membership Application: ${fullName}`,
       html: `
         <h2>New Membership Application Received</h2>

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await resend.emails.send({
       from: 'BRS India Contact <contact@brsindia.org.in>',
-      to: ['adarshrke2415@gmail.com'],
+      to: ['adarshrke2415@gmail.com', 'brsoffice.india@gmail.com'],
       subject: `New Contact Inquiry: ${enquiryType} from ${name}`,
       replyTo: email,
       html: `
