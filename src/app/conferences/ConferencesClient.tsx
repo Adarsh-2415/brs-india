@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -14,6 +14,30 @@ import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
 
 export default function ConferencesClient() {
+  const [confData, setConfData] = useState<any>({
+    title: "National Meeting on Battery Research & Storage 2026",
+    description: "Access the portal for registrations, abstract submissions, and technical agendas.",
+    flyer_url: "/conferences/confrence_2026.jpeg", // Default local asset
+    link_url: "https://www.nmbrs26.com/"
+  });
+
+  useEffect(() => {
+    const fetchConf = async () => {
+      try {
+        const res = await fetch('/api/conferences');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.id) {
+            setConfData(data);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching dynamic conference data:", err);
+      }
+    };
+    fetchConf();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* ─── Hero Section ─── */}
@@ -65,17 +89,18 @@ export default function ConferencesClient() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6 }}
-            className="relative w-full rounded-3xl overflow-hidden border border-brs-900/10 shadow-[0_20px_50px_rgba(10,25,47,0.08)] bg-white group"
+            className="relative w-full rounded-3xl overflow-hidden border border-brs-900/10 shadow-[0_20px_50px_rgba(10,25,47,0.08)] bg-white group flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-brs-900/0 group-hover:bg-brs-900/5 transition-colors duration-500 z-10 pointer-events-none" />
-            <Image
-              src="/conferences/confrence_2026.jpeg"
-              alt="BRS India Conference 2026 Presentation Banner"
-              width={1920}
-              height={1080}
-              className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-[1.01]"
-              priority
-            />
+            {confData.flyer_url ? (
+              <img
+                src={confData.flyer_url}
+                alt="BRS India Conference Presentation Banner"
+                className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-[1.01]"
+              />
+            ) : (
+              <div className="py-24 text-center text-slate-400 font-semibold">No Poster Image Available</div>
+            )}
           </motion.div>
         </section>
 
@@ -89,7 +114,7 @@ export default function ConferencesClient() {
           </div>
 
           <div className="grid gap-6 max-w-4xl mx-auto mt-10">
-            {/* First Link: NMBRS 2026 */}
+            {/* First Link: Dynamic Current Conference */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -97,20 +122,20 @@ export default function ConferencesClient() {
               transition={{ duration: 0.5 }}
             >
               <a
-                href="https://www.nmbrs26.com/"
+                href={confData.link_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-brs-400/20 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1.5 hover:border-brs-600/35 hover:shadow-[0_20px_45px_rgba(217,119,87,0.12)]"
               >
                 <div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
-                    NMBRS-26
+                    Active Conference Portal
                   </span>
                   <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
-                    National Meeting on Battery Research & Storage 2026
+                    {confData.title}
                   </h3>
                   <p className="mt-1 text-sm font-semibold text-brs-400/80">
-                    Access the portal for registrations, abstract submissions, and technical agendas.
+                    {confData.description || "Access the portal for registrations, abstract submissions, and agendas."}
                   </p>
                 </div>
                 <div className="mt-4 sm:mt-0 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brs-50 text-brs-400 transition-all duration-500 group-hover:bg-brs-600 group-hover:text-white group-hover:scale-110">
@@ -119,7 +144,7 @@ export default function ConferencesClient() {
               </a>
             </motion.div>
 
-            {/* Second Link: IMBRS 2025 */}
+            {/* Second Link: IMBRS 2025 (Archive) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -134,7 +159,7 @@ export default function ConferencesClient() {
               >
                 <div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
-                    IMBRS-25
+                    IMBRS-25 (Archived)
                   </span>
                   <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
                     International Meeting on Battery Research & Storage 2025

@@ -213,16 +213,20 @@ export default function MembershipFormClient() {
         const finalAmount = selectedTier?.price || getSelectedPrice();
         const finalTierName = selectedTier?.name || formData.membershipTypeDropdown.split(" - ")[0] || "Unknown Tier";
         
+        const submitData = new FormData();
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value instanceof File) {
+            submitData.append(key, value);
+          } else if (value !== null && value !== undefined) {
+            submitData.append(key, String(value));
+          }
+        });
+        submitData.append("membershipType", finalTierName);
+        submitData.append("amount", finalAmount);
+
         const response = await fetch('/api/submit-application', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...formData,
-            membershipType: finalTierName,
-            amount: finalAmount
-          }),
+          body: submitData,
         });
 
         const result = await response.json().catch(() => ({}));

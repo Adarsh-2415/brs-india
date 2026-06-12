@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -12,6 +13,27 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      );
+    }
+
+    // Insert into Supabase database
+    const { error: dbError } = await supabaseAdmin
+      .from('contact_submissions')
+      .insert([
+        {
+          name,
+          email,
+          phone,
+          enquiry_type: enquiryType,
+          message
+        }
+      ]);
+
+    if (dbError) {
+      console.error('Database Insertion Error:', dbError);
+      return NextResponse.json(
+        { error: `Database Error: ${dbError.message}` },
+        { status: 500 }
       );
     }
 
