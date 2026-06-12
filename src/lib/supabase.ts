@@ -12,9 +12,13 @@ if (!supabaseUrl) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Client for backend server-side operations (uses service role key to bypass RLS)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  supabaseServiceKey || (typeof window === 'undefined' ? '' : 'client-side-placeholder'),
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    }
   }
-});
+);
