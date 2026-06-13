@@ -2,23 +2,18 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
 }
 
 // Client for frontend operations (uses public anon key)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Client for backend server-side operations (uses service role key to bypass RLS)
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  supabaseServiceKey || (typeof window === 'undefined' ? '' : 'client-side-placeholder'),
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    }
+// Configured to store session in sessionStorage, ensuring auto-logout when tab/browser is closed.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+    persistSession: true,
+    autoRefreshToken: true
   }
-);
+});
+

@@ -152,7 +152,7 @@ export default function HeroBackground() {
 }
 
 function LightningEffect() {
-  const [bolts, setBolts] = useState<{ d: string; id: number }[]>([]);
+  const [bolts, setBolts] = useState<{ d: string; id: number; repeatDelay: number }[]>([]);
 
   useEffect(() => {
     const generateBolts = () => {
@@ -166,7 +166,7 @@ function LightningEffect() {
           curY += 15 + Math.random() * 15;
           d += ` L ${curX} ${curY}`;
         }
-        return { d, id: Date.now() + i };
+        return { d, id: Date.now() + i, repeatDelay: Math.random() * 2 };
       });
       setBolts(newBolts);
     };
@@ -203,7 +203,7 @@ function LightningEffect() {
           transition={{
             duration: 0.6,
             repeat: Infinity,
-            repeatDelay: Math.random() * 2,
+            repeatDelay: bolt.repeatDelay,
             ease: "linear"
           }}
         />
@@ -247,14 +247,31 @@ function CircuitPath({ d, delay }: { d: string; delay: number }) {
 }
 
 function MolecularNetwork() {
-  const [nodes, setNodes] = useState<{ x: number; y: number; size: number }[]>([]);
+  const [nodes, setNodes] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    size: number;
+    animX: number;
+    animY: number;
+    animDuration: number;
+    circleDuration: number;
+  }[]>([]);
 
   useEffect(() => {
-    setNodes(Array.from({ length: 8 }).map(() => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 4 + 2
-    })));
+    setNodes(Array.from({ length: 8 }).map((_, idx) => {
+      const size = Math.random() * 4 + 2;
+      return {
+        id: idx,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size,
+        animX: Math.random() * 2 - 1,
+        animY: Math.random() * 2 - 1,
+        animDuration: 10 + Math.random() * 5,
+        circleDuration: 3 + Math.random() * 2,
+      };
+    }));
   }, []);
 
   if (nodes.length === 0) return null;
@@ -263,38 +280,41 @@ function MolecularNetwork() {
     <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
       {/* Connections */}
       {nodes.map((node, i) => (
-        nodes.slice(i + 1, i + 3).map((target, j) => (
-          <motion.line
-            key={`${i}-${j}`}
-            x1={node.x}
-            y1={node.y}
-            x2={target.x}
-            y2={target.y}
-            stroke="#8EB69B"
-            strokeWidth="0.2"
-            strokeOpacity="0.3"
-            animate={{
-              strokeOpacity: [0.1, 0.3, 0.1],
-            }}
-            transition={{
-              duration: 4 + Math.random() * 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        ))
+        nodes.slice(i + 1, i + 3).map((target, j) => {
+          const duration = 4 + ((node.x + target.y) % 2);
+          return (
+            <motion.line
+              key={`${i}-${j}`}
+              x1={node.x}
+              y1={node.y}
+              x2={target.x}
+              y2={target.y}
+              stroke="#8EB69B"
+              strokeWidth="0.2"
+              strokeOpacity="0.3"
+              animate={{
+                strokeOpacity: [0.1, 0.3, 0.1],
+              }}
+              transition={{
+                duration: duration,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          );
+        })
       ))}
       
       {/* Nodes */}
-      {nodes.map((node, i) => (
+      {nodes.map((node) => (
         <motion.g
-          key={i}
+          key={node.id}
           animate={{
-            x: [0, Math.random() * 2 - 1, 0],
-            y: [0, Math.random() * 2 - 1, 0],
+            x: [0, node.animX, 0],
+            y: [0, node.animY, 0],
           }}
           transition={{
-            duration: 10 + Math.random() * 5,
+            duration: node.animDuration,
             repeat: Infinity,
             ease: "easeInOut"
           }}
@@ -309,7 +329,7 @@ function MolecularNetwork() {
               r: [node.size / 2, node.size / 2 + 0.5, node.size / 2],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: node.circleDuration,
               repeat: Infinity,
               ease: "easeInOut",
             }}

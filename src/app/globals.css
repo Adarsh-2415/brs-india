@@ -25,6 +25,16 @@
   --color-brs-light: #F8FAFC;
   --color-brs-50: #F8FAFC;
 
+  /* Admin Panel Specific Color Palette - Green & Sage Theme */
+  --color-admin-900: #051F20; /* Darkest Green Background */
+  --color-admin-800: #0B2B26; /* Deep Card Green */
+  --color-admin-700: #163832; /* Border Slate Green */
+  --color-admin-600: #235347; /* Forest Green - Primary Accent */
+  --color-admin-500: #8EB69B; /* Sage Green - Highlights */
+  --color-admin-400: #A3C9B1; /* Light Sage */
+  --color-admin-300: #C2E2CC; /* Extra Light Sage */
+  --color-admin-100: #DAF1DE; /* Mint Silver */
+
   /* shadcn tokens */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

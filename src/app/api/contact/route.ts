@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
 
     const { data, error } = await resend.emails.send({
       from: 'BRS India Contact <contact@brsindia.org.in>',
-      to: ['adarshrke2415@gmail.com', 'brsoffice.india@gmail.com'],
+      to: 'brsoffice.india@gmail.com',
+      cc: 'adarshrke2415@gmail.com',
       subject: `New Contact Inquiry: ${enquiryType} from ${name}`,
       replyTo: email,
       html: `

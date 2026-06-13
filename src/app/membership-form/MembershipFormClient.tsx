@@ -14,7 +14,11 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
-  Globe
+  Globe,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  X
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -130,6 +134,26 @@ export default function MembershipFormClient() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Toast notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: "success" | "error" | "warning";
+    message: string;
+  }>({ show: false, type: "success", message: "" });
+
+  const triggerNotification = (type: "success" | "error" | "warning", message: string) => {
+    setNotification({ show: true, type, message });
+  };
+
+  useEffect(() => {
+    if (notification.show) {
+      const timer = setTimeout(() => {
+        setNotification(prev => ({ ...prev, show: false }));
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.show]);
+
   useEffect(() => {
     if (currentStep > 1 || isSuccess) {
       const formElement = document.getElementById("application-form");
@@ -164,7 +188,7 @@ export default function MembershipFormClient() {
         formData.membershipTypeDropdown
       ];
       if (requiredStep1.some(field => !field || typeof field === 'string' && field.trim() === '')) {
-        alert("Please fill in all mandatory fields (marked with *) before proceeding.");
+        triggerNotification("warning", "Please fill in all mandatory fields (marked with *) before proceeding.");
         return;
       }
     } else if (currentStep === 2) {
@@ -176,7 +200,7 @@ export default function MembershipFormClient() {
         formData.statement
       ];
       if (requiredTextStep2.some(field => !field || typeof field === 'string' && field.trim() === '')) {
-        alert("Please fill in all mandatory text fields (marked with *) before proceeding to payment.");
+        triggerNotification("warning", "Please fill in all mandatory text fields (marked with *) before proceeding to payment.");
         return;
       }
       
@@ -185,7 +209,7 @@ export default function MembershipFormClient() {
         formData.signature
       ];
       if (requiredFilesStep2.some(file => !file)) {
-        alert("Please upload all required documents before proceeding to payment.");
+        triggerNotification("warning", "Please upload all required documents before proceeding to payment.");
         return;
       }
     }
@@ -195,13 +219,13 @@ export default function MembershipFormClient() {
 
   const handlePaymentSubmit = async () => {
     if (parseInt(captchaInput) !== captcha.result) {
-      alert("Incorrect captcha answer. Please try again.");
+      triggerNotification("error", "Incorrect captcha answer. Please try again.");
       generateCaptcha();
       return;
     }
 
     if (!formData.receipt) {
-      alert("Please upload the payment receipt (screenshot of UPI payment) before submitting.");
+      triggerNotification("warning", "Please upload the payment receipt (screenshot of UPI payment) before submitting.");
       return;
     }
 
@@ -239,11 +263,12 @@ export default function MembershipFormClient() {
           const errMsg = typeof result.error === 'object' && result.error !== null
             ? (result.error.message || JSON.stringify(result.error))
             : (result.error || 'Unknown error');
-          alert(`Failed to submit application: ${errMsg}`);
+          triggerNotification("error", `Failed to submit application: ${errMsg}`);
           setIsProcessing(false);
         }
       } catch (error) {
         console.error("Error connecting to server:", error);
+        triggerNotification("error", "An error occurred connecting to the server.");
         setIsProcessing(false);
       }
     }, 2500);
@@ -920,6 +945,50 @@ export default function MembershipFormClient() {
           </motion.div>
         </div>
       </section>
+
+      {/* Floating Toast Notification */}
+      <AnimatePresence>
+        {notification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-24 right-6 z-50 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-slate-100 max-w-sm"
+          >
+            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+              notification.type === "success" 
+                ? "bg-emerald-500/10 text-emerald-500" 
+                : notification.type === "warning"
+                  ? "bg-amber-500/10 text-amber-500"
+                  : "bg-red-500/10 text-red-500"
+            }`}>
+              {notification.type === "success" && <CheckCircle className="h-5 w-5" />}
+              {notification.type === "warning" && <AlertCircle className="h-5 w-5" />}
+              {notification.type === "error" && <XCircle className="h-5 w-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className={`text-xs font-black uppercase tracking-wider ${
+                notification.type === "success" 
+                  ? "text-emerald-600" 
+                  : notification.type === "warning"
+                    ? "text-amber-600"
+                    : "text-red-600"
+              }`}>
+                {notification.type === "success" ? "Success" : notification.type === "warning" ? "Warning" : "Error"}
+              </h4>
+              <p className="text-[11px] font-bold text-slate-500 mt-0.5 leading-tight select-text">
+                {notification.message}
+              </p>
+            </div>
+            <button 
+              onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

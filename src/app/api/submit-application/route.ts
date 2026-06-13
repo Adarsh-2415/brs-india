@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { randomUUID } from 'crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -56,6 +56,38 @@ export async function POST(req: Request) {
     const photographFile = formData.get('photograph') as File | null;
     const signatureFile = formData.get('signature') as File | null;
     const receiptFile = formData.get('receipt') as File | null;
+
+    // Helper to validate file size, MIME type and extension
+    const validateFile = (file: File, maxSizeBytes: number, fieldName: string) => {
+      if (!file || file.size === 0) return null;
+      if (file.size > maxSizeBytes) {
+        return `${fieldName} size exceeds the limit of ${maxSizeBytes / (1024 * 1024)}MB.`;
+      }
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf';
+      if (!isImage && !isPdf) {
+        return `${fieldName} must be an image or a PDF document.`;
+      }
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+      if (!fileExt || !allowedExtensions.includes(fileExt)) {
+        return `${fieldName} has an invalid file extension. Allowed extensions are: ${allowedExtensions.join(', ')}.`;
+      }
+      return null;
+    };
+
+    if (photographFile && photographFile.size > 0) {
+      const err = validateFile(photographFile, 20 * 1024 * 1024, 'Photograph');
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
+    if (signatureFile && signatureFile.size > 0) {
+      const err = validateFile(signatureFile, 1 * 1024 * 1024, 'Signature');
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
+    if (receiptFile && receiptFile.size > 0) {
+      const err = validateFile(receiptFile, 5 * 1024 * 1024, 'Payment Receipt');
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
 
     let photographUrl = '';
     let signatureUrl = '';
@@ -118,8 +150,10 @@ export async function POST(req: Request) {
     // ==========================================
     const adminEmailResult = await resend.emails.send({
       from: 'BRS Admissions <admissions@brsindia.org.in>',
-      to: ['adarshrke2415@gmail.com', 'brsoffice.india@gmail.com'],
+      to: 'brsoffice.india@gmail.com',
+      cc: 'adarshrke2415@gmail.com',
       subject: `New Membership Application: ${fullName}`,
+      replyTo: email, // If admin replies to notification, it goes to the applicant
       html: `
         <h2>New Membership Application Received</h2>
         <p><strong>Name:</strong> ${fullName}</p>
@@ -146,18 +180,47 @@ export async function POST(req: Request) {
     // ==========================================
     // 2. USER CONFIRMATION EMAIL
     // ==========================================
+    let userSubject = 'Application Received - Battery Research Society of India';
+    let userHtmlBody = `
+      <h2>Thank you for applying, ${fullName}!</h2>
+      <p>We have received your application for the <strong>${membershipTypeDropdown}</strong> tier and your payment of <strong>₹${amount}</strong> was successful.</p>
+      <p>Our executive council is currently reviewing your application. You will receive an official confirmation and your Membership ID shortly.</p>
+      <br />
+      <p>For any queries, please feel free to reach out to us directly at <a href="mailto:brsoffice.india@gmail.com">brsoffice.india@gmail.com</a>.</p>
+      <br />
+      <p>Best Regards,</p>
+      <p><strong>Battery Research Society of India</strong></p>
+    `;
+
+    try {
+      const { data: customTemplate, error: templateError } = await supabaseAdmin
+        .from('email_templates')
+        .select('subject, body')
+        .eq('id', 'membership_confirmation')
+        .maybeSingle();
+
+      if (!templateError && customTemplate) {
+        const replacePlaceholders = (templateStr: string) => {
+          return templateStr
+            .replace(/\{\{fullName\}\}/g, fullName)
+            .replace(/\{\{membershipType\}\}/g, membershipTypeDropdown)
+            .replace(/\{\{amount\}\}/g, amount);
+        };
+        userSubject = replacePlaceholders(customTemplate.subject);
+        userHtmlBody = replacePlaceholders(customTemplate.body);
+      } else if (templateError) {
+        console.warn("Could not load custom email template (likely migration not applied yet):", templateError.message);
+      }
+    } catch (dbFetchError) {
+      console.error("Error loading email template from DB, using fallback defaults:", dbFetchError);
+    }
+
     const userEmailResult = await resend.emails.send({
       from: 'BRS India <info@brsindia.org.in>',
       to: email, // The Applicant's Email
-      subject: 'Application Received - Battery Research Society of India',
-      html: `
-        <h2>Thank you for applying, ${fullName}!</h2>
-        <p>We have received your application for the <strong>${membershipTypeDropdown}</strong> tier and your payment of <strong>₹${amount}</strong> was successful.</p>
-        <p>Our executive council is currently reviewing your application. You will receive an official confirmation and your Membership ID shortly.</p>
-        <br />
-        <p>Best Regards,</p>
-        <p><strong>Battery Research Society of India</strong></p>
-      `
+      subject: userSubject,
+      replyTo: 'brsoffice.india@gmail.com', // If applicant replies to confirmation, it goes to the working inbox
+      html: userHtmlBody
     });
 
     if (userEmailResult.error) {

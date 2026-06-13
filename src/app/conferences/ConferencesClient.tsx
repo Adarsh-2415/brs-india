@@ -13,13 +13,30 @@ import {
 import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
 
-export default function ConferencesClient() {
-  const [confData, setConfData] = useState<any>({
-    title: "National Meeting on Battery Research & Storage 2026",
-    description: "Access the portal for registrations, abstract submissions, and technical agendas.",
-    flyer_url: "/conferences/confrence_2026.jpeg", // Default local asset
-    link_url: "https://www.nmbrs26.com/"
+const getConferenceBadge = (title: string) => {
+  if (title.includes("2026") && title.includes("National Meeting")) {
+    return "NMBRS-26";
+  }
+  if (title.includes("International Meeting") && title.includes("2025")) {
+    return "IMBRS-25";
+  }
+  
+  const yearMatch = title.match(/\b(20\d{2})\b/);
+  const yearSuffix = yearMatch ? `-${yearMatch[1].slice(-2)}` : "";
+  const cleanTitle = title.replace(/\b(20\d{2})\b/g, "").trim();
+  
+  const words = cleanTitle.split(/\s+/).filter(word => {
+    const w = word.toLowerCase();
+    return w !== "on" && w !== "and" && w !== "of" && w !== "the" && w !== "&" && w !== "in" && w !== "at" && w !== "for";
   });
+  
+  const acronym = words.map(word => word[0]).join("").toUpperCase();
+  return acronym + yearSuffix;
+};
+
+export default function ConferencesClient() {
+  const [conferences, setConferences] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchConf = async () => {
@@ -27,16 +44,35 @@ export default function ConferencesClient() {
         const res = await fetch('/api/conferences');
         if (res.ok) {
           const data = await res.json();
-          if (data.id) {
-            setConfData(data);
+          if (Array.isArray(data)) {
+            setConferences(data);
           }
         }
       } catch (err) {
         console.error("Error fetching dynamic conference data:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchConf();
   }, []);
+
+  // Default fallback data matching the original hardcoded state
+  const defaultConf = {
+    title: "National Meeting on Battery Research & Storage 2026",
+    description: "Access the portal for registrations, abstract submissions, and technical agendas.",
+    flyer_url: "/conferences/confrence_2026.jpeg",
+    link_url: "https://www.nmbrs26.com/"
+  };
+
+  // Determine featured conference (the latest published one with a flyer)
+  const featuredConf = conferences.find(c => c.flyer_url) || defaultConf;
+
+  // Filter list of active portals (published conferences that have links)
+  const linkConfs = conferences.filter(c => c.link_url);
+
+  // If no dynamic conferences are loaded, display the default one as the active portal
+  const displayLinkConfs = linkConfs.length > 0 ? linkConfs : [defaultConf];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -75,34 +111,32 @@ export default function ConferencesClient() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12">
 
         {/* ─── Section 1: Featured Conference Image (Conference 2026) ─── */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="h-10 w-10 rounded-xl bg-brs-600/10 flex items-center justify-center">
-              <Award className="h-5 w-5 text-brs-600" />
+        {featuredConf && featuredConf.flyer_url && (
+          <section className="mb-16">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="h-10 w-10 rounded-xl bg-brs-600/10 flex items-center justify-center">
+                <Award className="h-5 w-5 text-brs-600" />
+              </div>
+              <h2 className="text-3xl font-black tracking-tight text-brs-900">Upcoming Conference</h2>
             </div>
-            <h2 className="text-3xl font-black tracking-tight text-brs-900">Upcoming Conference</h2>
-          </div>
 
-          {/* Conference 2026 Image Frame */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6 }}
-            className="relative w-full rounded-3xl overflow-hidden border border-brs-900/10 shadow-[0_20px_50px_rgba(10,25,47,0.08)] bg-white group flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-brs-900/0 group-hover:bg-brs-900/5 transition-colors duration-500 z-10 pointer-events-none" />
-            {confData.flyer_url ? (
+            {/* Conference 2026 Image Frame */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6 }}
+              className="relative w-full rounded-3xl overflow-hidden border border-brs-900/10 shadow-[0_20px_50px_rgba(10,25,47,0.08)] bg-white group flex items-center justify-center"
+            >
+              <div className="absolute inset-0 bg-brs-900/0 group-hover:bg-brs-900/5 transition-colors duration-500 z-10 pointer-events-none" />
               <img
-                src={confData.flyer_url}
+                src={featuredConf.flyer_url}
                 alt="BRS India Conference Presentation Banner"
                 className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-[1.01]"
               />
-            ) : (
-              <div className="py-24 text-center text-slate-400 font-semibold">No Poster Image Available</div>
-            )}
-          </motion.div>
-        </section>
+            </motion.div>
+          </section>
+        )}
 
         {/* ─── Section 2: Conference Web Portals (Links) ─── */}
         <section className="pb-32 lg:pb-40">
@@ -114,37 +148,40 @@ export default function ConferencesClient() {
           </div>
 
           <div className="grid gap-6 max-w-4xl mx-auto mt-10">
-            {/* First Link: Dynamic Current Conference */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <a
-                href={confData.link_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-brs-400/20 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1.5 hover:border-brs-600/35 hover:shadow-[0_20px_45px_rgba(217,119,87,0.12)]"
+            {/* Dynamic list of active conference portals */}
+            {displayLinkConfs.map((conf, index) => (
+              <motion.div
+                key={conf.id || index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.05 }}
               >
-                <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
-                    Active Conference Portal
-                  </span>
-                  <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
-                    {confData.title}
-                  </h3>
-                  <p className="mt-1 text-sm font-semibold text-brs-400/80">
-                    {confData.description || "Access the portal for registrations, abstract submissions, and agendas."}
-                  </p>
-                </div>
-                <div className="mt-4 sm:mt-0 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brs-50 text-brs-400 transition-all duration-500 group-hover:bg-brs-600 group-hover:text-white group-hover:scale-110">
-                  <ExternalLink className="h-5 w-5" />
-                </div>
-              </a>
-            </motion.div>
+                <a
+                  href={conf.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-brs-400/20 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1.5 hover:border-brs-600/35 hover:shadow-[0_20px_45px_rgba(217,119,87,0.12)]"
+                >
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
+                      {getConferenceBadge(conf.title)}
+                    </span>
+                    <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
+                      {conf.title}
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-brs-400/80">
+                      {conf.description || "Access the portal for registrations, abstract submissions, and agendas."}
+                    </p>
+                  </div>
+                  <div className="mt-4 sm:mt-0 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brs-50 text-brs-400 transition-all duration-500 group-hover:bg-brs-600 group-hover:text-white group-hover:scale-110">
+                    <ExternalLink className="h-5 w-5" />
+                  </div>
+                </a>
+              </motion.div>
+            ))}
 
-            {/* Second Link: IMBRS 2025 (Archive) */}
+            {/* Second Link: IMBRS 2025 (Archive) - Always shown statically at the bottom as originally designed */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -159,7 +196,7 @@ export default function ConferencesClient() {
               >
                 <div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
-                    IMBRS-25 (Archived)
+                    IMBRS-25
                   </span>
                   <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
                     International Meeting on Battery Research & Storage 2025

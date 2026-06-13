@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Phone, 
   Mail, 
@@ -9,7 +9,11 @@ import {
   Send, 
   Clock, 
   MessageSquare,
-  ChevronRight
+  ChevronRight,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  X
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -54,6 +58,26 @@ export default function ContactClient() {
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, result: 0 });
   const [captchaInput, setCaptchaInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Toast notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: "success" | "error" | "warning";
+    message: string;
+  }>({ show: false, type: "success", message: "" });
+
+  const triggerNotification = (type: "success" | "error" | "warning", message: string) => {
+    setNotification({ show: true, type, message });
+  };
+
+  useEffect(() => {
+    if (notification.show) {
+      const timer = setTimeout(() => {
+        setNotification(prev => ({ ...prev, show: false }));
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.show]);
 
   const generateCaptcha = () => {
     const n1 = Math.floor(Math.random() * 10) + 1;
@@ -75,7 +99,7 @@ export default function ContactClient() {
     e.preventDefault();
     
     if (parseInt(captchaInput) !== captcha.result) {
-      alert("Incorrect captcha answer. Please try again.");
+      triggerNotification("error", "Incorrect captcha answer. Please try again.");
       generateCaptcha();
       return;
     }
@@ -92,7 +116,7 @@ export default function ContactClient() {
       const result = await response.json();
 
       if (response.ok) {
-        alert("Message sent successfully! We will get back to you soon.");
+        triggerNotification("success", "Message sent successfully! We will get back to you soon.");
         setFormData({
           name: "",
           email: "",
@@ -106,11 +130,11 @@ export default function ContactClient() {
         const errMsg = typeof result.error === 'object' && result.error !== null
           ? (result.error.message || JSON.stringify(result.error))
           : (result.error || 'Unknown error');
-        alert(`Failed to send message: ${errMsg}`);
+        triggerNotification("error", `Failed to send message: ${errMsg}`);
       }
     } catch (error) {
       console.error("Submission Error:", error);
-      alert("An error occurred. Please try again later.");
+      triggerNotification("error", "An error occurred. Please try again later.");
     } finally {
       setIsSubmitting(false);
     }
@@ -343,6 +367,42 @@ export default function ContactClient() {
           </div>
         </div>
       </section>
+
+      {/* Floating Toast Notification */}
+      <AnimatePresence>
+        {notification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-24 right-6 z-50 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-slate-100 max-w-sm"
+          >
+            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+              notification.type === "success" 
+                ? "bg-emerald-500/10 text-emerald-500" 
+                : "bg-red-500/10 text-red-500"
+            }`}>
+              {notification.type === "success" ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className={`text-xs font-black uppercase tracking-wider ${
+                notification.type === "success" ? "text-emerald-600" : "text-red-600"
+              }`}>
+                {notification.type === "success" ? "Success" : "Error"}
+              </h4>
+              <p className="text-[11px] font-bold text-slate-500 mt-0.5 leading-tight select-text">
+                {notification.message}
+              </p>
+            </div>
+            <button 
+              onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

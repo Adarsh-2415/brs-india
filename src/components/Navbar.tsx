@@ -43,6 +43,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Do not render navbar on admin routes
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
