@@ -17,20 +17,15 @@ import {
   User,
   ShieldCheck,
   Check,
-  Building,
-  GraduationCap,
   LayoutDashboard,
   Menu,
   ChevronLeft,
   ChevronsUpDown,
   Filter,
   Trash2,
-  Inbox,
   Sparkles,
-  Archive,
   RefreshCw,
   Clock,
-  EyeOff,
   Plus,
   Globe,
   Sliders,
@@ -39,6 +34,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
+import { sanitizeHtml } from "@/lib/utils";
 
 type ConferenceStatus = "published" | "hidden" | "archived";
 type ConferenceType = "flyer_only" | "link_only" | "both";
@@ -85,6 +81,46 @@ export default function AdminDashboard() {
 
   // Zoom view for documents in side drawer
   const [zoomedDoc, setZoomedDoc] = useState<string | null>(null);
+
+  // PDF state for detailed view drawer
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfViewUrl, setPdfViewUrl] = useState<string | null>(null);
+  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedMember) {
+      setPdfViewUrl(null);
+      setPdfDownloadUrl(null);
+      setPdfError(null);
+      return;
+    }
+
+    const fetchMemberPdf = async (id: string) => {
+      if (!sessionToken) return;
+      setPdfLoading(true);
+      setPdfError(null);
+      try {
+        const res = await fetch(`/api/admin/members/pdf?id=${id}`, {
+          headers: { "Authorization": `Bearer ${sessionToken}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setPdfViewUrl(data.viewUrl);
+          setPdfDownloadUrl(data.downloadUrl);
+        } else {
+          setPdfError(data.error || "Failed to load PDF");
+        }
+      } catch (err: any) {
+        console.error("Error loading membership PDF URL:", err);
+        setPdfError(err.message || "An error occurred while fetching PDF");
+      } finally {
+        setPdfLoading(false);
+      }
+    };
+
+    fetchMemberPdf(selectedMember.id);
+  }, [selectedMember, sessionToken]);
 
   // Email Template Settings State
   const [templateSubject, setTemplateSubject] = useState("");
@@ -233,6 +269,7 @@ export default function AdminDashboard() {
       fetchMembers();
       fetchEmailTemplate();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionToken]);
 
   // ─── Conference Actions ───
@@ -1562,8 +1599,15 @@ export default function AdminDashboard() {
                         <div key={c.id} className="bg-[#0B2B26]/30 border border-[#163832]/50 rounded-2xl p-4 flex gap-4 backdrop-blur-sm relative group hover:border-[#8EB69B]/30 transition-all">
                           {/* Left thumbnail */}
                           {c.flyer_url ? (
-                            <div className="h-20 w-16 border border-[#163832] rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center">
-                              <img src={c.flyer_url} alt="Flyer" className="h-full w-full object-cover" />
+                            <div className="h-20 w-16 border border-[#163832] rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center relative">
+                              <Image 
+                                src={c.flyer_url} 
+                                alt="Flyer" 
+                                className="h-full w-full object-cover" 
+                                width={64} 
+                                height={80} 
+                                unoptimized={!c.flyer_url.startsWith('/')} 
+                              />
                             </div>
                           ) : (
                             <div className="h-20 w-16 bg-[#051F20] border border-[#163832] rounded-lg shrink-0 flex items-center justify-center text-slate-600">
@@ -1647,8 +1691,15 @@ export default function AdminDashboard() {
                           <div>
                             <div className="flex gap-4 items-start mb-3">
                               {c.flyer_url ? (
-                                <div className="h-16 w-12 border border-[#163832] rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center shadow-inner">
-                                  <img src={c.flyer_url} alt="Flyer" className="h-full w-full object-cover" />
+                                <div className="h-16 w-12 border border-[#163832] rounded-lg overflow-hidden shrink-0 bg-black flex items-center justify-center shadow-inner relative">
+                                  <Image 
+                                    src={c.flyer_url} 
+                                    alt="Flyer" 
+                                    className="h-full w-full object-cover" 
+                                    width={48} 
+                                    height={64} 
+                                    unoptimized={!c.flyer_url.startsWith('/')} 
+                                  />
                                 </div>
                               ) : (
                                 <div className="h-16 w-12 bg-[#051F20] border border-[#163832] rounded-lg shrink-0 flex items-center justify-center text-slate-600 shadow-inner">
@@ -1920,13 +1971,13 @@ export default function AdminDashboard() {
                   <div className="bg-white rounded-2xl p-6 text-black overflow-y-auto flex-1 select-text shadow-inner min-h-[350px] max-h-[500px]">
                     <div 
                       dangerouslySetInnerHTML={{
-                        __html: (() => {
+                        __html: sanitizeHtml((() => {
                           const repl = templateBody || "";
                           return repl
                             .replace(/\{\{fullName\}\}/g, "Prof. John Doe")
                             .replace(/\{\{membershipType\}\}/g, "Life Member (Individual)")
                             .replace(/\{\{amount\}\}/g, "5000");
-                        })()
+                        })())
                       }}
                       className="prose prose-xs max-w-none text-slate-800"
                     />
@@ -2066,10 +2117,13 @@ export default function AdminDashboard() {
                         className="h-28 w-24 border border-[#163832]/80 rounded-xl overflow-hidden relative bg-black/40 flex items-center justify-center cursor-zoom-in"
                       >
                         {selectedMember.photograph_signed_url ? (
-                          <img 
+                          <Image 
                             src={selectedMember.photograph_signed_url} 
                             alt="Photograph" 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            width={96}
+                            height={112}
+                            unoptimized
                           />
                         ) : (
                           <span className="text-[9px] text-slate-600 font-bold uppercase">No Image File</span>
@@ -2096,10 +2150,13 @@ export default function AdminDashboard() {
                         className="h-28 w-full border border-[#163832]/80 rounded-xl overflow-hidden relative bg-black/40 flex items-center justify-center p-2 cursor-zoom-in"
                       >
                         {selectedMember.signature_signed_url ? (
-                          <img 
+                          <Image 
                             src={selectedMember.signature_signed_url} 
                             alt="Signature" 
                             className="w-full h-full object-contain filter invert opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                            width={160}
+                            height={112}
+                            unoptimized
                           />
                         ) : (
                           <span className="text-[9px] text-slate-600 font-bold uppercase">No Signature File</span>
@@ -2129,10 +2186,13 @@ export default function AdminDashboard() {
                         className="h-28 w-24 border border-[#163832]/80 rounded-xl overflow-hidden relative bg-black/40 flex items-center justify-center p-1 cursor-zoom-in"
                       >
                         {selectedMember.receipt_signed_url ? (
-                          <img 
+                          <Image 
                             src={selectedMember.receipt_signed_url} 
                             alt="Receipt" 
                             className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                            width={96}
+                            height={112}
+                            unoptimized
                           />
                         ) : (
                           <span className="text-[9px] text-slate-600 font-bold uppercase">No Receipt File</span>
@@ -2151,6 +2211,61 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
+                  </div>
+                </div>
+
+                {/* Application PDF Document Section */}
+                <div className="border-t border-[#163832]/40 pt-5 mt-6 mb-6">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 select-none">Application PDF Document</h4>
+                  
+                  <div className="bg-[#051F20]/30 border border-[#163832]/60 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-[#235347]/20 border border-[#8EB69B]/30 rounded-xl flex items-center justify-center text-[#8EB69B] shrink-0">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-white block">Official Application PDF</span>
+                        <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                          {pdfLoading ? "Generating secure signed links..." : "Signed two-page print document ready"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      {pdfLoading ? (
+                        <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-[#8EB69B] w-full sm:w-auto select-none bg-[#163832]/35 border border-[#8EB69B]/10 rounded-xl">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          Loading...
+                        </div>
+                      ) : pdfError ? (
+                        <div className="text-[10px] font-bold text-red-400 bg-red-950/20 border border-red-900/30 px-3 py-2 rounded-xl w-full sm:w-auto">
+                          {pdfError}
+                        </div>
+                      ) : (
+                        <>
+                          {pdfViewUrl && (
+                            <a
+                              href={pdfViewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-[#8EB69B] hover:text-white bg-[#163832]/40 hover:bg-[#163832] border border-[#8EB69B]/20 hover:border-[#8EB69B]/50 rounded-xl transition-all cursor-pointer w-full sm:w-auto shadow-sm select-none"
+                            >
+                              <Eye className="h-4 w-4" />
+                              View PDF
+                            </a>
+                          )}
+                          {pdfDownloadUrl && (
+                            <a
+                              href={pdfDownloadUrl}
+                              className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-[#235347] hover:bg-[#2d6a5b] border border-[#8EB69B]/40 hover:border-[#8EB69B]/70 rounded-xl transition-all cursor-pointer w-full sm:w-auto shadow-sm select-none"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2278,7 +2393,14 @@ export default function AdminDashboard() {
               >
                 ✕
               </button>
-              <img src={zoomedDoc} alt="Zoomed document" className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10" />
+              <Image 
+                src={zoomedDoc} 
+                alt="Zoomed document" 
+                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10" 
+                width={800} 
+                height={800} 
+                unoptimized 
+              />
             </motion.div>
           </div>
         )}

@@ -8,7 +8,6 @@ import {
   Scale, 
   UserPlus, 
   Map, 
-  FileText,
   AlertCircle,
   Award
 } from "lucide-react";

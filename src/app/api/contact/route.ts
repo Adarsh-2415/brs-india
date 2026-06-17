@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { escapeHtml } from '@/lib/utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -37,6 +38,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const safeName = escapeHtml(name || '');
+    const safeEmail = escapeHtml(email || '');
+    const safePhone = escapeHtml(phone || '');
+    const safeEnquiryType = escapeHtml(enquiryType || '');
+    const safeMessage = escapeHtml(message || '');
+
     const { data, error } = await resend.emails.send({
       from: 'BRS India Contact <contact@brsindia.org.in>',
       to: 'brsoffice.india@gmail.com',
@@ -46,13 +53,13 @@ export async function POST(request: Request) {
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
           <h2 style="color: #D97757;">New Contact Inquiry</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone}</p>
-          <p><strong>Enquiry Type:</strong> ${enquiryType}</p>
+          <p><strong>Name:</strong> ${safeName}</p>
+          <p><strong>Email:</strong> ${safeEmail}</p>
+          <p><strong>Phone:</strong> ${safePhone}</p>
+          <p><strong>Enquiry Type:</strong> ${safeEnquiryType}</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
           <p><strong>Message:</strong></p>
-          <p style="white-space: pre-wrap;">${message}</p>
+          <p style="white-space: pre-wrap;">${safeMessage}</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
           <p style="font-size: 0.8em; color: #777;">Sent from BRS India Contact Form</p>
         </div>

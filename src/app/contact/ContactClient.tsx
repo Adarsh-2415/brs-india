@@ -6,12 +6,9 @@ import {
   Phone, 
   Mail, 
   MapPin, 
-  Send, 
-  Clock, 
   MessageSquare,
   ChevronRight,
   CheckCircle,
-  AlertCircle,
   XCircle,
   X
 } from "lucide-react";

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { BookOpen, Video, PlayCircle } from "lucide-react";
+import { BookOpen, Video } from "lucide-react";
 import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
 

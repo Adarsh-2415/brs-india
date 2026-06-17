@@ -4,8 +4,6 @@ import {
   ArrowRight,
   BookOpen,
   Award,
-  Mail,
-  MapPin,
   GraduationCap,
   Microscope,
   Globe,

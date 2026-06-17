@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   Sparkles,
   ExternalLink,
   Award,
-  ChevronRight,
   Globe
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -36,7 +34,6 @@ const getConferenceBadge = (title: string) => {
 
 export default function ConferencesClient() {
   const [conferences, setConferences] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchConf = async () => {
@@ -50,8 +47,6 @@ export default function ConferencesClient() {
         }
       } catch (err) {
         console.error("Error fetching dynamic conference data:", err);
-      } finally {
-        setIsLoading(false);
       }
     };
     fetchConf();
@@ -129,10 +124,13 @@ export default function ConferencesClient() {
               className="relative w-full rounded-3xl overflow-hidden border border-brs-900/10 shadow-[0_20px_50px_rgba(10,25,47,0.08)] bg-white group flex items-center justify-center"
             >
               <div className="absolute inset-0 bg-brs-900/0 group-hover:bg-brs-900/5 transition-colors duration-500 z-10 pointer-events-none" />
-              <img
+              <Image
                 src={featuredConf.flyer_url}
                 alt="BRS India Conference Presentation Banner"
                 className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-[1.01]"
+                width={1200}
+                height={600}
+                unoptimized={!featuredConf.flyer_url.startsWith('/')}
               />
             </motion.div>
           </section>

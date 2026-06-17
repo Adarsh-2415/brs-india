@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   Target, 
   Eye, 
-  Award, 
   BookOpen, 
   Users, 
   Globe, 
@@ -15,8 +14,7 @@ import {
   GraduationCap,
   Zap,
   Building2,
-  Handshake,
-  Scale
+  Handshake
 } from "lucide-react";
 import Footer from "@/components/Footer";
 

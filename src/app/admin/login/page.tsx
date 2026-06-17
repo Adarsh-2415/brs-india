@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, ShieldAlert, Check, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
