@@ -5,7 +5,6 @@ import { randomUUID } from 'crypto';
 import { generateMembershipPDF, slugifyName, formatTimestampForPDF } from '@/lib/pdfGenerator';
 import { escapeHtml } from '@/lib/utils';
 
-
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 function logDebug(message: string, error?: any) {
@@ -227,15 +226,32 @@ export async function POST(req: Request) {
     let signatureUrl = '';
     let receiptUrl = '';
 
-    // Upload files if they exist
+    // Upload files in parallel
+    const uploadPromises: Promise<void>[] = [];
     if (photographFile && photographFile.size > 0) {
-      photographUrl = await uploadToStorage(photographFile, 'photographs');
+      uploadPromises.push(
+        uploadToStorage(photographFile, 'photographs').then((url) => {
+          photographUrl = url;
+        })
+      );
     }
     if (signatureFile && signatureFile.size > 0) {
-      signatureUrl = await uploadToStorage(signatureFile, 'signatures');
+      uploadPromises.push(
+        uploadToStorage(signatureFile, 'signatures').then((url) => {
+          signatureUrl = url;
+        })
+      );
     }
     if (receiptFile && receiptFile.size > 0) {
-      receiptUrl = await uploadToStorage(receiptFile, 'receipts');
+      uploadPromises.push(
+        uploadToStorage(receiptFile, 'receipts').then((url) => {
+          receiptUrl = url;
+        })
+      );
+    }
+
+    if (uploadPromises.length > 0) {
+      await Promise.all(uploadPromises);
     }
 
     const fullName = `${prefix} ${firstName} ${lastName}`;
@@ -264,7 +280,7 @@ export async function POST(req: Request) {
           present_affiliation: presentAffiliation,
           past_affiliations: pastAffiliations,
           publications,
-          statement,
+          statement: statement,
           photograph_url: photographUrl,
           signature_url: signatureUrl,
           receipt_url: receiptUrl
@@ -289,7 +305,7 @@ export async function POST(req: Request) {
     let pdfPath = '';
 
     // ==========================================
-    // PDF GENERATION & STORAGE
+    // PDF GENERATION
     // ==========================================
     try {
       const getBuffer = async (file: any) => {
@@ -320,162 +336,169 @@ export async function POST(req: Request) {
       timestampStr = formatTimestampForPDF(dbData.created_at);
       pdfPath = `applications/${applicantSlug}/${timestampStr}.pdf`;
       logDebug(`Storage destination path: ${pdfPath}`);
-
-      // Upload to Supabase Storage
-      logDebug("Uploading PDF to Supabase Storage...");
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('brs-india')
-        .upload(pdfPath, pdfBuffer, {
-          contentType: 'application/pdf',
-          duplex: 'half'
-        });
-
-      if (uploadError) {
-        throw new Error(`PDF upload to storage failed: ${uploadError.message}`);
-      }
-
-      logDebug("Upload to Supabase Storage succeeded.");
-      console.log(`Successfully generated and uploaded membership application PDF to ${pdfPath}`);
     } catch (pdfErr: any) {
-      logDebug("PDF generation or storage upload failed", pdfErr);
-      console.error("Graceful error handling: PDF generation/upload failed:", pdfErr);
+      logDebug("PDF generation failed", pdfErr);
+      console.error("Graceful error handling: PDF generation failed:", pdfErr);
     }
 
     // ==========================================
-    // 1. ADMIN EMAIL NOTIFICATION
+    // PREPARE EMAIL PAYLOADS
     // ==========================================
-    try {
-      const safeFullName = escapeHtml(fullName);
-      const safeEmail = escapeHtml(email);
-      const safeContact = escapeHtml(contactNumber);
-      const safeAffiliation = escapeHtml(presentAffiliation);
-      const safeDegree = escapeHtml(academicDegree);
-      const safeType = escapeHtml(membershipTypeDropdown);
-      const safeAmount = escapeHtml(amount);
-      const safeStatement = escapeHtml(statement);
+    const safeFullName = escapeHtml(fullName);
+    const safeEmail = escapeHtml(email);
+    const safeContact = escapeHtml(contactNumber);
+    const safeAffiliation = escapeHtml(presentAffiliation);
+    const safeDegree = escapeHtml(academicDegree);
+    const safeType = escapeHtml(membershipTypeDropdown);
+    const safeAmount = escapeHtml(amount);
+    const safeStatement = escapeHtml(statement);
 
-      const adminEmailPayload: any = {
-        from: 'BRS Admissions <admissions@brsindia.org.in>',
-        to: 'brsoffice.india@gmail.com',
-        cc: 'adarshrke2415@gmail.com',
-        subject: `New Membership Application: ${fullName}`,
-        replyTo: email, // If admin replies to notification, it goes to the applicant
-        html: `
-          <h2>New Membership Application Received</h2>
-          <p><strong>Name:</strong> ${safeFullName}</p>
-          <p><strong>Email:</strong> ${safeEmail}</p>
-          <p><strong>Contact Number:</strong> ${safeContact}</p>
-          <p><strong>Present Affiliation:</strong> ${safeAffiliation}</p>
-          <p><strong>Academic Degree:</strong> ${safeDegree}</p>
-          <p><strong>Selected Tier:</strong> ${safeType}</p>
-          <p><strong>Amount Paid:</strong> ₹${safeAmount}</p>
-          <hr />
-          <h3>Statement of Intent:</h3>
-          <p>${safeStatement}</p>
-        `
-      };
+    const adminEmailPayload: any = {
+      from: 'BRS Admissions <admissions@brsindia.org.in>',
+      to: 'brsoffice.india@gmail.com',
+      cc: 'adarshrke2415@gmail.com',
+      subject: `New Membership Application: ${fullName}`,
+      replyTo: email, // If admin replies to notification, it goes to the applicant
+      html: `
+        <h2>New Membership Application Received</h2>
+        <p><strong>Name:</strong> ${safeFullName}</p>
+        <p><strong>Email:</strong> ${safeEmail}</p>
+        <p><strong>Contact Number:</strong> ${safeContact}</p>
+        <p><strong>Present Affiliation:</strong> ${safeAffiliation}</p>
+        <p><strong>Academic Degree:</strong> ${safeDegree}</p>
+        <p><strong>Selected Tier:</strong> ${safeType}</p>
+        <p><strong>Amount Paid:</strong> ₹${safeAmount}</p>
+        <hr />
+        <h3>Statement of Intent:</h3>
+        <p>${safeStatement}</p>
+      `
+    };
 
-      if (pdfBuffer && applicantSlug && timestampStr) {
-        logDebug("Attaching PDF to Admin email payload...");
-        adminEmailPayload.attachments = [
-          {
-            filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
-            content: pdfBuffer.toString('base64'),
-          }
-        ];
-      } else {
-        logDebug(`WARNING: Skipping Admin email attachment because pdfBuffer is null or slug/timestamp is empty. pdfBuffer size: ${pdfBuffer?.length}, slug: "${applicantSlug}", timestamp: "${timestampStr}"`);
-      }
-
-      logDebug("Sending Admin email via Resend...");
-      const adminEmailResult = await resend.emails.send(adminEmailPayload);
-      if (adminEmailResult.error) {
-        logDebug("Resend Admin Notification Error response from API", adminEmailResult.error);
-        console.error("Graceful error handling: Resend Admin Notification Error:", adminEmailResult.error);
-      } else {
-        logDebug(`Admin email sent successfully. Result ID: ${adminEmailResult.data?.id}`);
-        console.log("Admin email notification sent successfully:", adminEmailResult.data);
-      }
-    } catch (adminEmailErr) {
-      logDebug("Admin email dispatch block crashed", adminEmailErr);
-      console.error("Graceful error handling: Admin email exception:", adminEmailErr);
-    }
-
-    // ==========================================
-    // 2. USER CONFIRMATION EMAIL
-    // ==========================================
-    try {
-      const safeFullName = escapeHtml(fullName);
-      const safeType = escapeHtml(membershipTypeDropdown);
-      const safeAmount = escapeHtml(amount);
-
-      let userSubject = 'Application Received - Battery Research Society of India';
-      let userHtmlBody = `
-        <h2>Thank you for applying, ${safeFullName}!</h2>
-        <p>We have received your application for the <strong>${safeType}</strong> tier and your payment of <strong>₹${safeAmount}</strong> was successful.</p>
-        <p>Our executive council is currently reviewing your application. You will receive an official confirmation and your Membership ID shortly.</p>
-        <br />
-        <p>For any queries, please feel free to reach out to us directly at <a href="mailto:brsoffice.india@gmail.com">brsoffice.india@gmail.com</a>.</p>
-        <br />
-        <p>Best Regards,</p>
-        <p><strong>Battery Research Society of India</strong></p>
-      `;
-
-      try {
-        const { data: customTemplate, error: templateError } = await supabaseAdmin
-          .from('email_templates')
-          .select('subject, body')
-          .eq('id', 'membership_confirmation')
-          .maybeSingle();
-
-        if (!templateError && customTemplate) {
-          const replacePlaceholders = (templateStr: string) => {
-            return templateStr
-              .replace(/\{\{fullName\}\}/g, safeFullName)
-              .replace(/\{\{membershipType\}\}/g, safeType)
-              .replace(/\{\{amount\}\}/g, safeAmount);
-          };
-          userSubject = replacePlaceholders(customTemplate.subject);
-          userHtmlBody = replacePlaceholders(customTemplate.body);
-        } else if (templateError) {
-          console.warn("Could not load custom email template (likely migration not applied yet):", templateError.message);
+    if (pdfBuffer && applicantSlug && timestampStr) {
+      logDebug("Attaching PDF to Admin email payload...");
+      adminEmailPayload.attachments = [
+        {
+          filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
+          content: pdfBuffer.toString('base64'),
         }
-      } catch (dbFetchError) {
-        console.error("Error loading email template from DB, using fallback defaults:", dbFetchError);
+      ];
+    }
+
+    let userSubject = 'Application Received - Battery Research Society of India';
+    let userHtmlBody = `
+      <h2>Thank you for applying, ${safeFullName}!</h2>
+      <p>We have received your application for the <strong>${safeType}</strong> tier and your payment of <strong>₹${safeAmount}</strong> was successful.</p>
+      <p>Our executive council is currently reviewing your application. You will receive an official confirmation and your Membership ID shortly.</p>
+      <br />
+      <p>For any queries, please feel free to reach out to us directly at <a href="mailto:brsoffice.india@gmail.com">brsoffice.india@gmail.com</a>.</p>
+      <br />
+      <p>Best Regards,</p>
+      <p><strong>Battery Research Society of India</strong></p>
+    `;
+
+    try {
+      const { data: customTemplate, error: templateError } = await supabaseAdmin
+        .from('email_templates')
+        .select('subject, body')
+        .eq('id', 'membership_confirmation')
+        .maybeSingle();
+
+      if (!templateError && customTemplate) {
+        const replacePlaceholders = (templateStr: string) => {
+          return templateStr
+            .replace(/\{\{fullName\}\}/g, safeFullName)
+            .replace(/\{\{membershipType\}\}/g, safeType)
+            .replace(/\{\{amount\}\}/g, safeAmount);
+        };
+        userSubject = replacePlaceholders(customTemplate.subject);
+        userHtmlBody = replacePlaceholders(customTemplate.body);
+      } else if (templateError) {
+        console.warn("Could not load custom email template (likely migration not applied yet):", templateError.message);
       }
+    } catch (dbFetchError) {
+      console.error("Error loading email template from DB, using fallback defaults:", dbFetchError);
+    }
 
-      const userEmailPayload: any = {
-        from: 'BRS India <info@brsindia.org.in>',
-        to: email, // The Applicant's Email
-        subject: userSubject,
-        replyTo: 'brsoffice.india@gmail.com', // If applicant replies to confirmation, it goes to the working inbox
-        html: userHtmlBody
-      };
+    const userEmailPayload: any = {
+      from: 'BRS India <info@brsindia.org.in>',
+      to: email, // The Applicant's Email
+      subject: userSubject,
+      replyTo: 'brsoffice.india@gmail.com', // If applicant replies to confirmation, it goes to the working inbox
+      html: userHtmlBody
+    };
 
-      if (pdfBuffer && applicantSlug && timestampStr) {
-        logDebug("Attaching PDF to User email payload...");
-        userEmailPayload.attachments = [
-          {
-            filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
-            content: pdfBuffer.toString('base64'),
+    if (pdfBuffer && applicantSlug && timestampStr) {
+      logDebug("Attaching PDF to User email payload...");
+      userEmailPayload.attachments = [
+        {
+          filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
+          content: pdfBuffer.toString('base64'),
+        }
+      ];
+    }
+
+    // ==========================================
+    // RUN ASYNC I/O OPERATIONS IN PARALLEL
+    // ==========================================
+    const backgroundTasks: Promise<any>[] = [];
+
+    // 1. Upload PDF to Storage
+    if (pdfBuffer && pdfPath) {
+      logDebug("Queuing PDF upload to Supabase Storage...");
+      backgroundTasks.push(
+        supabaseAdmin.storage
+          .from('brs-india')
+          .upload(pdfPath, pdfBuffer, {
+            contentType: 'application/pdf',
+            duplex: 'half'
+          })
+          .then(() => {
+            logDebug("Upload to Supabase Storage succeeded.");
+          })
+          .catch(err => {
+            console.error("Graceful error handling: PDF storage upload failed:", err);
+          })
+      );
+    }
+
+    // 2. Send Admin Notification Email
+    logDebug("Queuing Admin email sending via Resend...");
+    backgroundTasks.push(
+      resend.emails
+        .send(adminEmailPayload)
+        .then(result => {
+          if (result.error) {
+            console.error("Graceful error handling: Resend Admin Notification Error:", result.error);
+          } else {
+            logDebug(`Admin email sent successfully. Result ID: ${result.data?.id}`);
           }
-        ];
-      } else {
-        logDebug(`WARNING: Skipping User email attachment because pdfBuffer is null or slug/timestamp is empty. pdfBuffer size: ${pdfBuffer?.length}, slug: "${applicantSlug}", timestamp: "${timestampStr}"`);
-      }
+        })
+        .catch(err => {
+          console.error("Graceful error handling: Admin email exception:", err);
+        })
+    );
 
-      logDebug("Sending User confirmation email via Resend...");
-      const userEmailResult = await resend.emails.send(userEmailPayload);
-      if (userEmailResult.error) {
-        logDebug("Resend User Confirmation Error response from API", userEmailResult.error);
-        console.error("Graceful error handling: Resend User Confirmation Error:", userEmailResult.error);
-      } else {
-        logDebug(`User email sent successfully. Result ID: ${userEmailResult.data?.id}`);
-        console.log("User email confirmation sent successfully:", userEmailResult.data);
-      }
-    } catch (userEmailErr) {
-      logDebug("User confirmation email dispatch block crashed", userEmailErr);
-      console.error("Graceful error handling: User confirmation email exception:", userEmailErr);
+    // 3. Send User Confirmation Email
+    logDebug("Queuing User email sending via Resend...");
+    backgroundTasks.push(
+      resend.emails
+        .send(userEmailPayload)
+        .then(result => {
+          if (result.error) {
+            console.error("Graceful error handling: Resend User Confirmation Error:", result.error);
+          } else {
+            logDebug(`User email sent successfully. Result ID: ${result.data?.id}`);
+          }
+        })
+        .catch(err => {
+          console.error("Graceful error handling: User confirmation email exception:", err);
+        })
+    );
+
+    if (backgroundTasks.length > 0) {
+      logDebug(`Awaiting ${backgroundTasks.length} background tasks concurrently...`);
+      await Promise.all(backgroundTasks);
+      logDebug("All concurrent background tasks completed.");
     }
 
     return NextResponse.json(
