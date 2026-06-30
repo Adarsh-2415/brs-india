@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, authenticateAdmin } from '@/lib/supabaseAdmin';
 
 const DEFAULT_SUBJECT = 'Application Received - Battery Research Society of India';
 const DEFAULT_BODY = `<h2>Thank you for applying, {{fullName}}!</h2>
@@ -14,14 +14,9 @@ const DEFAULT_BODY = `<h2>Thank you for applying, {{fullName}}!</h2>
 export async function GET(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Fetch from DB
@@ -68,14 +63,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Parse body

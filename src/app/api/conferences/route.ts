@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, authenticateAdmin } from '@/lib/supabaseAdmin';
 import { randomUUID } from 'crypto';
 
 // GET conferences list
@@ -15,37 +15,15 @@ export async function GET(req: Request) {
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (!authError && user) {
-        isAdmin = true;
-      }
-    }
-
-    // Check if the schema migration has been applied (checking if 'status' column exists)
-    const { error: schemaCheckError } = await supabaseAdmin
-      .from('conferences')
-      .select('status')
-      .limit(1);
-
-    const hasStatusColumn = !schemaCheckError;
-
-    // Auto-seed IMBRS 2025 archived conference in database once columns exist
-    if (hasStatusColumn) {
-      const { data: existingIMBRS } = await supabaseAdmin
-        .from('conferences')
-        .select('id')
-        .eq('title', 'International Meeting on Battery Research & Storage 2025')
-        .limit(1)
-        .maybeSingle();
-
-      if (!existingIMBRS) {
-        await supabaseAdmin.from('conferences').insert([{
-          title: 'International Meeting on Battery Research & Storage 2025',
-          description: 'Access the archived symposium archives, keynotes speaker directory, and scientific proceedings.',
-          link_url: 'https://www.imbrs25.com/',
-          status: 'archived',
-          type: 'link_only',
-          created_at: new Date('2025-01-15T00:00:00Z').toISOString(),
-          archived_at: new Date('2025-01-20T00:00:00Z').toISOString()
-        }]);
+        // Verify user matches our administrator whitelist criteria
+        const email = (user.email || '').toLowerCase();
+        if (
+          email === 'brsoffice.india@gmail.com' ||
+          email === 'adarshrke2415@gmail.com' ||
+          email.endsWith('@brsindia.org.in')
+        ) {
+          isAdmin = true;
+        }
       }
     }
 
@@ -53,9 +31,7 @@ export async function GET(req: Request) {
 
     if (!isAdmin) {
       // Public users should only see published conferences
-      if (hasStatusColumn) {
-        query = query.eq('status', 'published');
-      }
+      query = query.eq('status', 'published');
     }
 
     const { data: conferences, error: dbError } = await query.order('created_at', { ascending: false });
@@ -85,14 +61,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Parse form data
@@ -150,17 +121,13 @@ export async function POST(req: Request) {
       description,
       flyer_url: flyerUrl || null,
       link_url: linkUrl || null,
+      status,
+      type,
       updated_at: new Date().toISOString()
     };
 
-    // Safely add columns that might require DB migrations
-    const { error: colCheck } = await supabaseAdmin.from('conferences').select('status, type').limit(1);
-    if (!colCheck) {
-      payload.status = status;
-      payload.type = type;
-      if (status === 'archived') {
-        payload.archived_at = new Date().toISOString();
-      }
+    if (status === 'archived') {
+      payload.archived_at = new Date().toISOString();
     }
 
     let dbResult;
@@ -180,12 +147,6 @@ export async function POST(req: Request) {
     }
 
     if (dbResult.error) {
-      if (dbResult.error.code === '42703') {
-        return NextResponse.json({
-          error: 'column_missing',
-          message: 'One or more required columns (status, type, archived_at) are missing from the database. Please run the SQL migration in your Supabase SQL Editor.'
-        }, { status: 400 });
-      }
       throw dbResult.error;
     }
 
@@ -199,14 +160,10 @@ export async function POST(req: Request) {
 // PATCH toggle status or visiblity (Admin only)
 export async function PATCH(req: Request) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    // 1. Authenticate Admin
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     const body = await req.json();
@@ -234,12 +191,6 @@ export async function PATCH(req: Request) {
       .select();
 
     if (updateError) {
-      if (updateError.code === '42703') {
-        return NextResponse.json({
-          error: 'column_missing',
-          message: 'The "status" column does not exist in the database. Please run the SQL migration in your Supabase SQL Editor.'
-        }, { status: 400 });
-      }
       throw updateError;
     }
 
@@ -253,14 +204,10 @@ export async function PATCH(req: Request) {
 // DELETE conference (Admin only)
 export async function DELETE(req: Request) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    // 1. Authenticate Admin
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     const { searchParams } = new URL(req.url);

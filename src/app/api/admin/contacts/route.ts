@@ -1,19 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, authenticateAdmin } from '@/lib/supabaseAdmin';
 
 // GET contact submissions (Admin only)
 export async function GET(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Fetch contact submissions from database
@@ -43,14 +37,9 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Parse body
@@ -90,14 +79,9 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   try {
     // 1. Authenticate Admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    const auth = await authenticateAdmin(req);
+    if ('errorResponse' in auth) {
+      return auth.errorResponse;
     }
 
     // 2. Parse ID from URL
