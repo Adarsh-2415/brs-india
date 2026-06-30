@@ -17,7 +17,7 @@ const cspHeader = `
 `.replace(/\s{2,}/g, ' ').trim();
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdfkit"],
+  serverExternalPackages: ["pdfkit", "sharp"],
   images: {
     remotePatterns: [
       {
