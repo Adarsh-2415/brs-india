@@ -34,6 +34,7 @@ export function isUserAdmin(user: any): boolean {
   return (
     email === 'brsoffice.india@gmail.com' ||
     email === 'adarshrke2415@gmail.com' ||
+    email === 'ankulrocksclub@gmail.com' ||
     email.endsWith('@brsindia.org.in')
   );
 }

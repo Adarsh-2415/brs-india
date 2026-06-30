@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, authenticateAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, authenticateAdmin, isUserAdmin } from '@/lib/supabaseAdmin';
 import { randomUUID } from 'crypto';
 
 // GET conferences list
@@ -16,12 +16,7 @@ export async function GET(req: Request) {
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (!authError && user) {
         // Verify user matches our administrator whitelist criteria
-        const email = (user.email || '').toLowerCase();
-        if (
-          email === 'brsoffice.india@gmail.com' ||
-          email === 'adarshrke2415@gmail.com' ||
-          email.endsWith('@brsindia.org.in')
-        ) {
+        if (isUserAdmin(user)) {
           isAdmin = true;
         }
       }
