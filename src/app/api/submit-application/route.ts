@@ -427,16 +427,6 @@ export async function POST(req: Request) {
       html: userHtmlBody
     };
 
-    if (pdfBuffer && applicantSlug && timestampStr) {
-      logDebug("Attaching PDF to User email payload...");
-      userEmailPayload.attachments = [
-        {
-          filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
-          content: pdfBuffer.toString('base64'),
-        }
-      ];
-    }
-
     // ==========================================
     // RUN ASYNC I/O OPERATIONS IN PARALLEL
     // ==========================================
