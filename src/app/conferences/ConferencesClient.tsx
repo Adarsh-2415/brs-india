@@ -18,16 +18,16 @@ const getConferenceBadge = (title: string) => {
   if (title.includes("International Meeting") && title.includes("2025")) {
     return "IMBRS-25";
   }
-  
+
   const yearMatch = title.match(/\b(20\d{2})\b/);
   const yearSuffix = yearMatch ? `-${yearMatch[1].slice(-2)}` : "";
   const cleanTitle = title.replace(/\b(20\d{2})\b/g, "").trim();
-  
+
   const words = cleanTitle.split(/\s+/).filter(word => {
     const w = word.toLowerCase();
     return w !== "on" && w !== "and" && w !== "of" && w !== "the" && w !== "&" && w !== "in" && w !== "at" && w !== "for";
   });
-  
+
   const acronym = words.map(word => word[0]).join("").toUpperCase();
   return acronym + yearSuffix;
 };
@@ -54,7 +54,7 @@ export default function ConferencesClient() {
 
   // Default fallback data matching the original hardcoded state
   const defaultConf = {
-    title: "National Meeting on Battery Research & Storage 2026",
+    title: "National Meeting on Battery Research & Society 2026",
     description: "Access the portal for registrations, abstract submissions, and technical agendas.",
     flyer_url: "/conferences/confrence_2026.jpeg",
     link_url: "https://www.nmbrs26.com/"
@@ -178,36 +178,6 @@ export default function ConferencesClient() {
                 </a>
               </motion.div>
             ))}
-
-            {/* Second Link: IMBRS 2025 (Archive) - Always shown statically at the bottom as originally designed */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <a
-                href="https://www.imbrs25.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-brs-400/20 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1.5 hover:border-brs-600/35 hover:shadow-[0_20px_45px_rgba(217,119,87,0.12)]"
-              >
-                <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brs-600/10 px-3 py-1 text-xs font-bold text-brs-600 mb-3">
-                    IMBRS-25
-                  </span>
-                  <h3 className="text-xl font-black text-brs-900 group-hover:text-brs-600 transition-colors duration-300">
-                    International Meeting on Battery Research & Storage 2025
-                  </h3>
-                  <p className="mt-1 text-sm font-semibold text-brs-400/80">
-                    Access the archived symposium archives, keynotes speaker directory, and scientific proceedings.
-                  </p>
-                </div>
-                <div className="mt-4 sm:mt-0 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brs-50 text-brs-400 transition-all duration-500 group-hover:bg-brs-600 group-hover:text-white group-hover:scale-110">
-                  <ExternalLink className="h-5 w-5" />
-                </div>
-              </a>
-            </motion.div>
           </div>
 
         </section>
