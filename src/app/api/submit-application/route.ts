@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { randomUUID } from 'crypto';
 import { generateMembershipPDF, slugifyName, formatTimestampForPDF } from '@/lib/pdfGenerator';
 import { escapeHtml } from '@/lib/utils';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { transporter, ADMIN_EMAILS } from '@/lib/nodemailer';
 
 function logDebug(message: string, error?: any) {
   console.log(`[PDF-DEBUG] ${message}`, error || '');
@@ -354,9 +352,8 @@ export async function POST(req: Request) {
     const safeStatement = escapeHtml(statement);
 
     const adminEmailPayload: any = {
-      from: 'BRS Admissions <admissions@brsindia.org.in>',
-      to: 'brsoffice.india@gmail.com',
-      cc: 'adarshrke2415@gmail.com',
+      from: 'BRS Admissions <forms.futuresoft@gmail.com>',
+      to: ADMIN_EMAILS,
       subject: `New Membership Application: ${fullName}`,
       replyTo: email, // If admin replies to notification, it goes to the applicant
       html: `
@@ -379,7 +376,7 @@ export async function POST(req: Request) {
       adminEmailPayload.attachments = [
         {
           filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
-          content: pdfBuffer.toString('base64'),
+          content: pdfBuffer,
         }
       ];
     }
@@ -420,7 +417,7 @@ export async function POST(req: Request) {
     }
 
     const userEmailPayload: any = {
-      from: 'BRS India <info@brsindia.org.in>',
+      from: 'BRS India <forms.futuresoft@gmail.com>',
       to: email, // The Applicant's Email
       subject: userSubject,
       replyTo: 'brsoffice.india@gmail.com', // If applicant replies to confirmation, it goes to the working inbox
@@ -451,34 +448,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Send Admin Notification Email
-    logDebug("Queuing Admin email sending via Resend...");
+    // 2. Send Admin Notification Email via Nodemailer
+    logDebug("Queuing Admin email sending via Nodemailer...");
     backgroundTasks.push(
-      resend.emails
-        .send(adminEmailPayload)
-        .then(result => {
-          if (result.error) {
-            console.error("Graceful error handling: Resend Admin Notification Error:", result.error);
-          } else {
-            logDebug(`Admin email sent successfully. Result ID: ${result.data?.id}`);
-          }
+      transporter
+        .sendMail(adminEmailPayload)
+        .then(info => {
+          logDebug(`Admin email sent successfully. Message ID: ${info.messageId}`);
         })
         .catch(err => {
           console.error("Graceful error handling: Admin email exception:", err);
         })
     );
 
-    // 3. Send User Confirmation Email
-    logDebug("Queuing User email sending via Resend...");
+    // 3. Send User Confirmation Email via Nodemailer
+    logDebug("Queuing User email sending via Nodemailer...");
     backgroundTasks.push(
-      resend.emails
-        .send(userEmailPayload)
-        .then(result => {
-          if (result.error) {
-            console.error("Graceful error handling: Resend User Confirmation Error:", result.error);
-          } else {
-            logDebug(`User email sent successfully. Result ID: ${result.data?.id}`);
-          }
+      transporter
+        .sendMail(userEmailPayload)
+        .then(info => {
+          logDebug(`User email sent successfully. Message ID: ${info.messageId}`);
         })
         .catch(err => {
           console.error("Graceful error handling: User confirmation email exception:", err);

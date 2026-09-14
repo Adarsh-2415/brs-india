@@ -1,9 +1,7 @@
-import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { escapeHtml } from '@/lib/utils';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { transporter, ADMIN_EMAILS } from '@/lib/nodemailer';
 
 export async function POST(request: Request) {
   try {
@@ -44,10 +42,9 @@ export async function POST(request: Request) {
     const safeEnquiryType = escapeHtml(enquiryType || '');
     const safeMessage = escapeHtml(message || '');
 
-    const { data, error } = await resend.emails.send({
-      from: 'BRS India Contact <contact@brsindia.org.in>',
-      to: 'brsoffice.india@gmail.com',
-      cc: 'adarshrke2415@gmail.com',
+    const info = await transporter.sendMail({
+      from: 'BRS India Contact <forms.futuresoft@gmail.com>',
+      to: ADMIN_EMAILS,
       subject: `New Contact Inquiry: ${enquiryType} from ${name}`,
       replyTo: email,
       html: `
@@ -66,12 +63,7 @@ export async function POST(request: Request) {
       `,
     });
 
-    if (error) {
-      console.error('Resend Error:', error);
-      return NextResponse.json({ error: error.message || 'Failed to send email' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (err: any) {
     console.error('API Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
