@@ -2061,9 +2061,13 @@ export default function AdminDashboard() {
                         "photograph_url", 
                         "signature_url", 
                         "receipt_url", 
+                        "council_reference1_url",
+                        "council_reference2_url",
                         "photograph_signed_url", 
                         "signature_signed_url", 
                         "receipt_signed_url",
+                        "council_reference1_signed_url",
+                        "council_reference2_signed_url",
                         "prefix",
                         "first_name",
                         "last_name"
@@ -2107,7 +2111,7 @@ export default function AdminDashboard() {
                 <div className="border-t border-[#163832]/40 pt-5 mt-6">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 select-none">Uploaded Proofs & Documents</h4>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
                     
                     {/* Photograph */}
                     <div className="border border-[#163832] rounded-2xl p-4 bg-[#051F20]/25 flex flex-col items-center justify-between gap-3 group">
@@ -2182,12 +2186,12 @@ export default function AdminDashboard() {
                         Fee Receipt
                       </span>
                       <div 
-                        onClick={() => selectedMember.receipt_signed_url && setZoomedDoc(selectedMember.receipt_signed_url)}
+                        onClick={() => (selectedMember.receipt_signed_url || selectedMember.receipt_url) && setZoomedDoc(selectedMember.receipt_signed_url || selectedMember.receipt_url)}
                         className="h-28 w-24 border border-[#163832]/80 rounded-xl overflow-hidden relative bg-black/40 flex items-center justify-center p-1 cursor-zoom-in"
                       >
-                        {selectedMember.receipt_signed_url ? (
+                        {(selectedMember.receipt_signed_url || selectedMember.receipt_url) ? (
                           <Image 
-                            src={selectedMember.receipt_signed_url} 
+                            src={selectedMember.receipt_signed_url || selectedMember.receipt_url} 
                             alt="Receipt" 
                             className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                             width={96}
@@ -2198,14 +2202,66 @@ export default function AdminDashboard() {
                           <span className="text-[9px] text-slate-600 font-bold uppercase">No Receipt File</span>
                         )}
                       </div>
-                      {selectedMember.receipt_signed_url && (
+                      {(selectedMember.receipt_signed_url || selectedMember.receipt_url) && (
                         <a 
-                          href={selectedMember.receipt_signed_url}
+                          href={selectedMember.receipt_signed_url || selectedMember.receipt_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-[9px] font-bold text-white/80 hover:text-white inline-flex items-center gap-1 mt-1 bg-[#163832]/45 px-2.5 py-1 rounded-lg border border-[#8EB69B]/10 hover:border-[#8EB69B]/30 transition-all select-none"
                         >
                           View Original
+                          <ExternalLink className="h-3 w-3 text-[#8EB69B]" />
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Council Reference 1 */}
+                    <div className="border border-[#163832] rounded-2xl p-4 bg-[#051F20]/25 flex flex-col items-center justify-between gap-3 group">
+                      <span className="font-black text-[#8EB69B] text-[10px] uppercase tracking-wider select-none flex items-center gap-1 text-teal-300">
+                        <FileText className="h-3.5 w-3.5" />
+                        Council Ref 1
+                      </span>
+                      <div className="h-28 w-24 border border-[#163832]/80 rounded-xl bg-black/40 flex flex-col items-center justify-center p-2 text-center">
+                        {(selectedMember.council_reference1_signed_url || selectedMember.council_reference1_url) ? (
+                          <FileText className="h-10 w-10 text-teal-400 mb-1" />
+                        ) : (
+                          <span className="text-[9px] text-slate-600 font-bold uppercase">Not Provided</span>
+                        )}
+                      </div>
+                      {(selectedMember.council_reference1_signed_url || selectedMember.council_reference1_url) && (
+                        <a 
+                          href={selectedMember.council_reference1_signed_url || selectedMember.council_reference1_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] font-bold text-white/80 hover:text-white inline-flex items-center gap-1 mt-1 bg-[#163832]/45 px-2.5 py-1 rounded-lg border border-[#8EB69B]/10 hover:border-[#8EB69B]/30 transition-all select-none"
+                        >
+                          View PDF
+                          <ExternalLink className="h-3 w-3 text-[#8EB69B]" />
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Council Reference 2 */}
+                    <div className="border border-[#163832] rounded-2xl p-4 bg-[#051F20]/25 flex flex-col items-center justify-between gap-3 group">
+                      <span className="font-black text-[#8EB69B] text-[10px] uppercase tracking-wider select-none flex items-center gap-1 text-teal-300">
+                        <FileText className="h-3.5 w-3.5" />
+                        Council Ref 2
+                      </span>
+                      <div className="h-28 w-24 border border-[#163832]/80 rounded-xl bg-black/40 flex flex-col items-center justify-center p-2 text-center">
+                        {(selectedMember.council_reference2_signed_url || selectedMember.council_reference2_url) ? (
+                          <FileText className="h-10 w-10 text-teal-400 mb-1" />
+                        ) : (
+                          <span className="text-[9px] text-slate-600 font-bold uppercase">Not Provided</span>
+                        )}
+                      </div>
+                      {(selectedMember.council_reference2_signed_url || selectedMember.council_reference2_url) && (
+                        <a 
+                          href={selectedMember.council_reference2_signed_url || selectedMember.council_reference2_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] font-bold text-white/80 hover:text-white inline-flex items-center gap-1 mt-1 bg-[#163832]/45 px-2.5 py-1 rounded-lg border border-[#8EB69B]/10 hover:border-[#8EB69B]/30 transition-all select-none"
+                        >
+                          View PDF
                           <ExternalLink className="h-3 w-3 text-[#8EB69B]" />
                         </a>
                       )}

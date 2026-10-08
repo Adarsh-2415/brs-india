@@ -65,6 +65,9 @@ export default function MembershipFormClient() {
     zipCode: "",
     country: "India",
     membershipTypeDropdown: "",
+    councilRef1: null as File | null,
+    councilRef2: null as File | null,
+    phdYear: "",
     // Step 2
     academicDegree: "",
     presentAffiliation: "",
@@ -161,6 +164,17 @@ export default function MembershipFormClient() {
       newErrors.membershipTypeDropdown = "Membership type is required.";
     }
 
+    // Council Reference Documents for Life Memberships
+    const isLifeMember = selectedType === "life-individual" || selectedType === "life-org";
+    if (isLifeMember) {
+      if (!formData.councilRef1) {
+        newErrors.councilRef1 = "Council Reference Document 1 is required for Life Membership.";
+      }
+      if (!formData.councilRef2) {
+        newErrors.councilRef2 = "Council Reference Document 2 is required for Life Membership.";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -171,6 +185,25 @@ export default function MembershipFormClient() {
     // Academic Degree
     if (!formData.academicDegree || formData.academicDegree.trim() === "") {
       newErrors.academicDegree = "Academic degree is required.";
+    }
+
+    // PhD Award Year & Experience Validation (ONLY if Ph.D is selected as Last Academic Degree)
+    const isPhdSelected = (formData.academicDegree || '').toLowerCase().includes('ph');
+    if (isPhdSelected) {
+      if (!formData.phdYear || formData.phdYear.trim() === "") {
+        newErrors.phdYear = "Year PhD Awarded / Completion Year is required.";
+      } else {
+        const phdYearNum = parseInt(formData.phdYear.trim(), 10);
+        const currentYear = new Date().getFullYear();
+        if (isNaN(phdYearNum) || phdYearNum < 1950 || phdYearNum > currentYear) {
+          newErrors.phdYear = `Please enter a valid 4-digit year (1950 to ${currentYear}).`;
+        } else {
+          const isLifeMember = selectedType === "life-individual" || selectedType === "life-org";
+          if (isLifeMember && (currentYear - phdYearNum) < 10) {
+            newErrors.phdYear = `Minimum 10+ years of post-PhD experience (PhD awarded on or before ${currentYear - 10}) is required for Life Membership eligibility.`;
+          }
+        }
+      }
     }
 
     // Present Affiliation
@@ -286,6 +319,10 @@ export default function MembershipFormClient() {
       allowedExts = ["jpg", "jpeg", "png", "webp", "pdf"];
       allowedMimes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
       maxSizeMB = 3;
+    } else if (fieldName === "councilRef1" || fieldName === "councilRef2") {
+      allowedExts = ["pdf"];
+      allowedMimes = ["application/pdf"];
+      maxSizeMB = 2; // 2MB max as required
     }
 
     const fileExt = file.name.split('.').pop()?.toLowerCase() || "";
@@ -311,7 +348,7 @@ export default function MembershipFormClient() {
     }
 
     if (!allowedExts.includes(fileExt) || !allowedMimes.includes(fileMime)) {
-      const allowedText = fieldName === "receipt" ? "JPG, JPEG, PNG, WEBP, and PDF" : "JPG, JPEG, PNG, and WEBP";
+      const allowedText = (fieldName === "councilRef1" || fieldName === "councilRef2") ? "PDF" : fieldName === "receipt" ? "JPG, JPEG, PNG, WEBP, and PDF" : "JPG, JPEG, PNG, and WEBP";
       const errMessage = `Only ${allowedText} files are allowed.`;
       triggerNotification("error", errMessage);
       setErrors(prev => ({ ...prev, [fieldName]: errMessage }));
@@ -770,6 +807,68 @@ export default function MembershipFormClient() {
                             <option value="">{formData.membershipTypeDropdown || "Please select a membership type above"}</option>
                           </select>
                         </div>
+
+                        {/* Council Reference Documents Uploads for Life Memberships */}
+                        {(selectedType === "life-individual" || selectedType === "life-org") && (
+                          <div className="space-y-6 pt-4 border-t border-slate-100 mt-6">
+                            <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl flex items-start gap-3">
+                              <AlertCircle className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                              <p className="text-xs sm:text-sm text-teal-800 font-medium leading-relaxed">
+                                <strong>Note:</strong> Applicants selecting <strong>Life Member (Individual)</strong> or <strong>Life Member (Organization)</strong> must submit reference documents from 2 Council Members (PDF format only, Max 2MB each).
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                              {/* Council Reference 1 Upload */}
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-bold text-brs-900 uppercase tracking-wider">
+                                  Council Reference Document 1 <span className="text-red-500">*</span>
+                                </h4>
+                                <div className="relative border-2 border-dashed rounded-xl p-4 text-center hover:border-brs-600 transition-colors bg-white">
+                                  <input 
+                                    type="file" 
+                                    name="councilRef1"
+                                    accept=".pdf,application/pdf"
+                                    onChange={handleFileChange}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                  />
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Upload className="h-5 w-5 text-slate-400" />
+                                    <span className="text-xs font-semibold text-slate-600">
+                                      {formData.councilRef1 ? formData.councilRef1.name : "Upload PDF (Max 2MB)"}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">PDF format only</span>
+                                  </div>
+                                </div>
+                                {errors.councilRef1 && <p className="text-red-500 text-xs font-semibold">{errors.councilRef1}</p>}
+                              </div>
+
+                              {/* Council Reference 2 Upload */}
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-bold text-brs-900 uppercase tracking-wider">
+                                  Council Reference Document 2 <span className="text-red-500">*</span>
+                                </h4>
+                                <div className="relative border-2 border-dashed rounded-xl p-4 text-center hover:border-brs-600 transition-colors bg-white">
+                                  <input 
+                                    type="file" 
+                                    name="councilRef2"
+                                    accept=".pdf,application/pdf"
+                                    onChange={handleFileChange}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                  />
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Upload className="h-5 w-5 text-slate-400" />
+                                    <span className="text-xs font-semibold text-slate-600">
+                                      {formData.councilRef2 ? formData.councilRef2.name : "Upload PDF (Max 2MB)"}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">PDF format only</span>
+                                  </div>
+                                </div>
+                                {errors.councilRef2 && <p className="text-red-500 text-xs font-semibold">{errors.councilRef2}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -802,6 +901,33 @@ export default function MembershipFormClient() {
                           </label>
                         </div>
                         {errors.academicDegree && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.academicDegree}</p>}
+
+                        {/* Year PhD Awarded Field & Eligibility Guidance Box (Shown ONLY when Ph.D is selected) */}
+                        {((formData.academicDegree || '').toLowerCase().includes('ph')) && (
+                          <div className="space-y-3 pt-2">
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                              <p className="text-xs sm:text-sm text-amber-900 font-medium leading-relaxed">
+                                <strong>Eligibility Guidance:</strong> Kindly note that a minimum of 10+ years of experience post-PhD completion is required for Life Membership eligibility.
+                              </p>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h3 className="text-sm font-bold text-brs-900">
+                                Year PhD Awarded (YYYY) <span className="text-red-500">*</span>
+                              </h3>
+                              <input 
+                                type="number" 
+                                name="phdYear"
+                                placeholder="e.g. 2012"
+                                value={formData.phdYear}
+                                onChange={handleInputChange}
+                                className={`w-full sm:w-1/2 bg-white border rounded-xl px-4 h-12 sm:h-14 text-sm sm:text-base focus:ring-2 focus:ring-brs-600 focus:border-brs-600 outline-none transition-all duration-200 ${errors.phdYear ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-300'}`}
+                              />
+                              {errors.phdYear && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.phdYear}</p>}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Present Affiliation Field */}

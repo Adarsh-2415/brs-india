@@ -388,8 +388,10 @@ export async function generateMembershipPDF(params: PDFParams): Promise<Buffer> 
       // Section 2: ACADEMIC & PROFESSIONAL DETAILS
       currentY = drawSectionHeader(doc, 'ACADEMIC & PROFESSIONAL DETAILS', currentY);
 
+      const phdYearText = application.phd_year || application.phdYear;
       const academicRows: [string, string][] = [
-        ['Academic Degree', application.academic_degree],
+        ['Academic Degree', application.academic_degree + (phdYearText ? ` (PhD Awarded: ${phdYearText})` : '')],
+        ['Year PhD Awarded', phdYearText ? String(phdYearText) : 'N/A'],
         ['Present Affiliation / Institution', application.present_affiliation],
         ['Past Professional Affiliations', application.past_affiliations || 'None specified'],
         ['Selected Publications / Patents / Honors', application.publications || 'None specified']

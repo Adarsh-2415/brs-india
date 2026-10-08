@@ -55,11 +55,14 @@ export async function POST(req: Request) {
     const pastAffiliations = formData.get('pastAffiliations') as string || '';
     const publications = formData.get('publications') as string || '';
     const statement = formData.get('statement') as string || '';
+    const phdYear = formData.get('phdYear') as string || '';
 
     // Extract files
     const photographFile = formData.get('photograph') as File | null;
     const signatureFile = formData.get('signature') as File | null;
     const receiptFile = formData.get('receipt') as File | null;
+    const councilRef1File = formData.get('councilRef1') as File | null;
+    const councilRef2File = formData.get('councilRef2') as File | null;
 
     // Validate text inputs
     if (!firstName || firstName.trim() === '') {
@@ -220,9 +223,49 @@ export async function POST(req: Request) {
     );
     if (receiptErr) return NextResponse.json({ error: receiptErr }, { status: 400 });
 
+    const isLifeMember = membershipTypeDropdown.includes('Life Member');
+    if (isLifeMember) {
+      if (!councilRef1File || councilRef1File.size === 0) {
+        return NextResponse.json({ error: "Council Reference Document 1 is required for Life Membership." }, { status: 400 });
+      }
+      if (!councilRef2File || councilRef2File.size === 0) {
+        return NextResponse.json({ error: "Council Reference Document 2 is required for Life Membership." }, { status: 400 });
+      }
+    }
+
+    // Council Reference 1 validation (Max 2MB, PDF only)
+    if (councilRef1File && councilRef1File.size > 0) {
+      const ref1Err = validateFile(councilRef1File, ['pdf'], ['application/pdf'], 2 * 1024 * 1024, 'Council Reference Document 1');
+      if (ref1Err) return NextResponse.json({ error: ref1Err }, { status: 400 });
+    }
+
+    // Council Reference 2 validation (Max 2MB, PDF only)
+    if (councilRef2File && councilRef2File.size > 0) {
+      const ref2Err = validateFile(councilRef2File, ['pdf'], ['application/pdf'], 2 * 1024 * 1024, 'Council Reference Document 2');
+      if (ref2Err) return NextResponse.json({ error: ref2Err }, { status: 400 });
+    }
+
+    // PhD Year validation (ONLY if degree is Ph.D)
+    const isPhdDegree = academicDegree.toLowerCase().includes('ph');
+    if (isPhdDegree) {
+      if (!phdYear || phdYear.trim() === '') {
+        return NextResponse.json({ error: "Year PhD Awarded is required for PhD holders." }, { status: 400 });
+      }
+      const phdYearNum = parseInt(phdYear.trim(), 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(phdYearNum) || phdYearNum < 1950 || phdYearNum > currentYear) {
+        return NextResponse.json({ error: `Please enter a valid PhD Awarded Year (1950 to ${currentYear}).` }, { status: 400 });
+      }
+      if (isLifeMember && (currentYear - phdYearNum) < 10) {
+        return NextResponse.json({ error: `Minimum 10+ years of post-PhD experience (PhD awarded on or before ${currentYear - 10}) is required for Life Membership.` }, { status: 400 });
+      }
+    }
+
     let photographUrl = '';
     let signatureUrl = '';
     let receiptUrl = '';
+    let councilReference1Url = '';
+    let councilReference2Url = '';
 
     // Upload files in parallel
     const uploadPromises: Promise<void>[] = [];
@@ -244,6 +287,20 @@ export async function POST(req: Request) {
       uploadPromises.push(
         uploadToStorage(receiptFile, 'receipts').then((url) => {
           receiptUrl = url;
+        })
+      );
+    }
+    if (councilRef1File && councilRef1File.size > 0) {
+      uploadPromises.push(
+        uploadToStorage(councilRef1File, 'council-references').then((url) => {
+          councilReference1Url = url;
+        })
+      );
+    }
+    if (councilRef2File && councilRef2File.size > 0) {
+      uploadPromises.push(
+        uploadToStorage(councilRef2File, 'council-references').then((url) => {
+          councilReference2Url = url;
         })
       );
     }
@@ -281,7 +338,10 @@ export async function POST(req: Request) {
           statement: statement,
           photograph_url: photographUrl,
           signature_url: signatureUrl,
-          receipt_url: receiptUrl
+          receipt_url: receiptUrl,
+          council_reference1_url: councilReference1Url,
+          council_reference2_url: councilReference2Url,
+          phd_year: phdYear
         }
       ])
       .select('*')
@@ -351,6 +411,8 @@ export async function POST(req: Request) {
     const safeAmount = escapeHtml(amount);
     const safeStatement = escapeHtml(statement);
 
+    const safePhdYear = escapeHtml(phdYear);
+
     const adminEmailPayload: any = {
       from: 'BRS Admissions <forms.futuresoft@gmail.com>',
       to: ADMIN_EMAILS,
@@ -362,23 +424,67 @@ export async function POST(req: Request) {
         <p><strong>Email:</strong> ${safeEmail}</p>
         <p><strong>Contact Number:</strong> ${safeContact}</p>
         <p><strong>Present Affiliation:</strong> ${safeAffiliation}</p>
-        <p><strong>Academic Degree:</strong> ${safeDegree}</p>
+        <p><strong>Academic Degree:</strong> ${safeDegree} (PhD Awarded Year: ${safePhdYear})</p>
         <p><strong>Selected Tier:</strong> ${safeType}</p>
         <p><strong>Amount Paid:</strong> ₹${safeAmount}</p>
         <hr />
         <h3>Statement of Intent:</h3>
         <p>${safeStatement}</p>
-      `
+        ${councilRef1File ? '<p><em>📌 Council Reference Documents attached to this email.</em></p>' : ''}
+      `,
+      attachments: []
     };
 
+    // 1. Attachment 1: Application Form PDF Certificate
     if (pdfBuffer && applicantSlug && timestampStr) {
-      logDebug("Attaching PDF to Admin email payload...");
-      adminEmailPayload.attachments = [
-        {
-          filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
-          content: pdfBuffer,
-        }
-      ];
+      logDebug("Attaching Application PDF to Admin email payload...");
+      adminEmailPayload.attachments.push({
+        filename: `BRS_Membership_Application_${applicantSlug}_${timestampStr}.pdf`,
+        content: pdfBuffer,
+      });
+    }
+
+    // 2. Attachment 2: Payment Receipt File (User's uploaded receipt)
+    if (receiptFile && receiptFile.size > 0) {
+      try {
+        const receiptExt = receiptFile.name.split('.').pop() || 'png';
+        const receiptBuf = Buffer.from(await receiptFile.arrayBuffer());
+        adminEmailPayload.attachments.push({
+          filename: `Payment_Receipt_${applicantSlug}.${receiptExt}`,
+          content: receiptBuf,
+        });
+        logDebug("Attaching Payment Receipt File to Admin email payload...");
+      } catch (rErr) {
+        console.error("Failed to attach receipt file to admin email:", rErr);
+      }
+    }
+
+    // 3. Attachment 3: Council Reference Document 1 PDF
+    if (councilRef1File && councilRef1File.size > 0) {
+      try {
+        const ref1Buf = Buffer.from(await councilRef1File.arrayBuffer());
+        adminEmailPayload.attachments.push({
+          filename: `Council_Reference_1_${applicantSlug}.pdf`,
+          content: ref1Buf,
+        });
+        logDebug("Attaching Council Reference 1 PDF to Admin email payload...");
+      } catch (c1Err) {
+        console.error("Failed to attach council ref 1 PDF to admin email:", c1Err);
+      }
+    }
+
+    // 4. Attachment 4: Council Reference Document 2 PDF
+    if (councilRef2File && councilRef2File.size > 0) {
+      try {
+        const ref2Buf = Buffer.from(await councilRef2File.arrayBuffer());
+        adminEmailPayload.attachments.push({
+          filename: `Council_Reference_2_${applicantSlug}.pdf`,
+          content: ref2Buf,
+        });
+        logDebug("Attaching Council Reference 2 PDF to Admin email payload...");
+      } catch (c2Err) {
+        console.error("Failed to attach council ref 2 PDF to admin email:", c2Err);
+      }
     }
 
     let userSubject = 'Application Received - Battery Research Society of India';
