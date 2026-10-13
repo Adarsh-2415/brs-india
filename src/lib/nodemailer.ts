@@ -18,4 +18,5 @@ export const ADMIN_EMAILS = [
   'brsoffice.india@gmail.com',
   'adarshrke2415@gmail.com',
   'forms.futuresoft@gmail.com',
+  'ashwanisharma0132@gmail.com',
 ];

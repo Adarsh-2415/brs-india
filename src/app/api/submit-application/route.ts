@@ -245,18 +245,21 @@ export async function POST(req: Request) {
       if (ref2Err) return NextResponse.json({ error: ref2Err }, { status: 400 });
     }
 
-    // PhD Year validation (ONLY if degree is Ph.D)
+    // Academic Degree & PhD Year validation for Life Membership
     const isPhdDegree = academicDegree.toLowerCase().includes('ph');
-    if (isPhdDegree) {
+    if (isLifeMember && !isPhdDegree) {
+      return NextResponse.json({ error: "Only Ph.D holders are eligible for Life Membership." }, { status: 400 });
+    }
+    if (isPhdDegree && isLifeMember) {
       if (!phdYear || phdYear.trim() === '') {
-        return NextResponse.json({ error: "Year PhD Awarded is required for PhD holders." }, { status: 400 });
+        return NextResponse.json({ error: "Year PhD Awarded is required for Life Membership PhD holders." }, { status: 400 });
       }
       const phdYearNum = parseInt(phdYear.trim(), 10);
       const currentYear = new Date().getFullYear();
       if (isNaN(phdYearNum) || phdYearNum < 1950 || phdYearNum > currentYear) {
         return NextResponse.json({ error: `Please enter a valid PhD Awarded Year (1950 to ${currentYear}).` }, { status: 400 });
       }
-      if (isLifeMember && (currentYear - phdYearNum) < 10) {
+      if ((currentYear - phdYearNum) < 10) {
         return NextResponse.json({ error: `Minimum 10+ years of post-PhD experience (PhD awarded on or before ${currentYear - 10}) is required for Life Membership.` }, { status: 400 });
       }
     }
@@ -426,7 +429,7 @@ export async function POST(req: Request) {
         <p><strong>Present Affiliation:</strong> ${safeAffiliation}</p>
         <p><strong>Academic Degree:</strong> ${safeDegree} (PhD Awarded Year: ${safePhdYear})</p>
         <p><strong>Selected Tier:</strong> ${safeType}</p>
-        <p><strong>Amount Paid:</strong> ₹${safeAmount}</p>
+        <p><strong>Amount Paid:</strong> ₹${safeAmount} (Includes 18% GST)</p>
         <hr />
         <h3>Statement of Intent:</h3>
         <p>${safeStatement}</p>

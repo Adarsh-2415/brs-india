@@ -20,31 +20,41 @@ const MEMBERSHIP_TYPES = [
   {
     id: "life-individual",
     name: "Life Member (Individual)",
-    price: "8,000",
+    basePrice: "8,000",
+    gstAmount: "1,440",
+    price: "9,440",
     color: "from-emerald-500 to-teal-600",
   },
   {
     id: "life-org",
     name: "Life Member (Organization)",
-    price: "24,000",
+    basePrice: "24,000",
+    gstAmount: "4,320",
+    price: "28,320",
     color: "from-blue-600 to-indigo-700",
   },
   {
     id: "general-individual",
     name: "General Member (Individual)",
-    price: "5,000",
+    basePrice: "5,000",
+    gstAmount: "900",
+    price: "5,900",
     color: "from-brs-600 to-brs-800",
   },
   {
     id: "general-org",
     name: "General Member (Organization)",
-    price: "15,000",
+    basePrice: "15,000",
+    gstAmount: "2,700",
+    price: "17,700",
     color: "from-teal-600 to-emerald-700",
   },
   {
     id: "student",
     name: "Student/Post-Doctoral Researcher",
-    price: "2,000",
+    basePrice: "2,000",
+    gstAmount: "360",
+    price: "2,360",
     color: "from-amber-500 to-orange-600",
   }
 ];
@@ -182,14 +192,18 @@ export default function MembershipFormClient() {
   const validateStep2 = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    const isLifeMember = selectedType === "life-individual" || selectedType === "life-org";
+
     // Academic Degree
     if (!formData.academicDegree || formData.academicDegree.trim() === "") {
       newErrors.academicDegree = "Academic degree is required.";
+    } else if (isLifeMember && !formData.academicDegree.toLowerCase().includes("ph")) {
+      newErrors.academicDegree = "Only Ph.D holders are eligible for Life Membership.";
     }
 
-    // PhD Award Year & Experience Validation (ONLY if Ph.D is selected as Last Academic Degree)
+    // PhD Award Year & Experience Validation (ONLY for Life Membership + Ph.D Degree)
     const isPhdSelected = (formData.academicDegree || '').toLowerCase().includes('ph');
-    if (isPhdSelected) {
+    if (isLifeMember && isPhdSelected) {
       if (!formData.phdYear || formData.phdYear.trim() === "") {
         newErrors.phdYear = "Year PhD Awarded / Completion Year is required.";
       } else {
@@ -197,11 +211,8 @@ export default function MembershipFormClient() {
         const currentYear = new Date().getFullYear();
         if (isNaN(phdYearNum) || phdYearNum < 1950 || phdYearNum > currentYear) {
           newErrors.phdYear = `Please enter a valid 4-digit year (1950 to ${currentYear}).`;
-        } else {
-          const isLifeMember = selectedType === "life-individual" || selectedType === "life-org";
-          if (isLifeMember && (currentYear - phdYearNum) < 10) {
-            newErrors.phdYear = `Minimum 10+ years of post-PhD experience (PhD awarded on or before ${currentYear - 10}) is required for Life Membership eligibility.`;
-          }
+        } else if ((currentYear - phdYearNum) < 10) {
+          newErrors.phdYear = `Minimum 10+ years of post-PhD experience (PhD awarded on or before ${currentYear - 10}) is required for Life Membership eligibility.`;
         }
       }
     }
@@ -269,11 +280,11 @@ export default function MembershipFormClient() {
   useEffect(() => {
     if (selectedType) {
       let dropdownValue = "";
-      if (selectedType === "life-individual") dropdownValue = "Life Member (Individual) - Rs. 8,000";
-      else if (selectedType === "life-org") dropdownValue = "Life Member (Organization) - Rs. 24,000";
-      else if (selectedType === "general-individual") dropdownValue = "General Member (Individual) - Rs. 5,000";
-      else if (selectedType === "general-org") dropdownValue = "General Member (Organization) - Rs. 15,000";
-      else if (selectedType === "student") dropdownValue = "Student/Post-Doctoral Researcher - Rs. 2,000";
+      if (selectedType === "life-individual") dropdownValue = "Life Member (Individual) - Rs. 9,440 (Rs. 8,000 + 18% GST)";
+      else if (selectedType === "life-org") dropdownValue = "Life Member (Organization) - Rs. 28,320 (Rs. 24,000 + 18% GST)";
+      else if (selectedType === "general-individual") dropdownValue = "General Member (Individual) - Rs. 5,900 (Rs. 5,000 + 18% GST)";
+      else if (selectedType === "general-org") dropdownValue = "General Member (Organization) - Rs. 17,700 (Rs. 15,000 + 18% GST)";
+      else if (selectedType === "student") dropdownValue = "Student/Post-Doctoral Researcher - Rs. 2,360 (Rs. 2,000 + 18% GST)";
       
       setFormData(prev => ({ ...prev, membershipTypeDropdown: dropdownValue }));
       setErrors(prev => {
@@ -409,6 +420,10 @@ export default function MembershipFormClient() {
         triggerNotification("warning", "Please correct the errors in the form before proceeding.");
         return;
       }
+      const isLife = selectedType === "life-individual" || selectedType === "life-org";
+      if (isLife && (!formData.academicDegree || formData.academicDegree !== "Ph.D")) {
+        setFormData((prev) => ({ ...prev, academicDegree: "Ph.D" }));
+      }
     } else if (currentStep === 2) {
       if (!validateStep2()) {
         triggerNotification("warning", "Please correct the errors and ensure all required files are uploaded before proceeding.");
@@ -520,20 +535,20 @@ export default function MembershipFormClient() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                onClick={() => setSelectedType(tier.id)}
-                className={`group relative p-6 rounded-2xl bg-white border cursor-pointer shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
-                  selectedType === tier.id ? "border-brs-600 ring-2 ring-brs-600/20" : "border-slate-100"
-                }`}
+                className="relative p-6 rounded-2xl bg-white border border-slate-100 shadow-sm select-none transition-all duration-300"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className={`h-3 w-3 rounded-full bg-gradient-to-r ${tier.color} ${selectedType === tier.id ? "animate-pulse" : ""}`} />
+                    <div className={`h-3 w-3 rounded-full bg-gradient-to-r ${tier.color}`} />
                     <h3 className="text-[15px] font-black text-brs-900 tracking-tight">{tier.name}</h3>
                   </div>
-                  <div className={`flex items-baseline gap-1 px-4 py-2 rounded-xl border transition-all duration-500 ${
-                    selectedType === tier.id ? "bg-brs-900 text-white border-brs-900" : "bg-slate-50 border-slate-100 group-hover:bg-brs-900 group-hover:text-white"
-                  }`}>
-                    <span className="text-sm font-black tracking-tight">₹{tier.price}</span>
+                  <div className="flex flex-col items-end px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50 shrink-0">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-black text-brs-900 tracking-tight">₹{tier.price}</span>
+                    </div>
+                    <span className="text-[9px] font-semibold leading-tight text-slate-500">
+                      ₹{tier.basePrice} + 18% GST
+                    </span>
                   </div>
                 </div>
               </motion.div>
@@ -788,11 +803,11 @@ export default function MembershipFormClient() {
                             className={`w-full bg-white border rounded-xl px-4 h-12 sm:h-14 text-sm sm:text-base focus:ring-2 focus:ring-brs-600 focus:border-brs-600 outline-none transition-all duration-200 ${errors.membershipTypeDropdown ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-300'}`}
                           >
                             <option value="">Select an option</option>
-                            <option value="Life Member (Individual) - Rs. 8,000">Life Member (Individual) - Rs. 8,000</option>
-                            <option value="Life Member (Organization) - Rs. 24,000">Life Member (Organization) - Rs. 24,000</option>
-                            <option value="General Member (Individual) - Rs. 5,000">General Member (Individual) - Rs. 5,000</option>
-                            <option value="General Member (Organization) - Rs. 15,000">General Member (Organization) - Rs. 15,000</option>
-                            <option value="Student/Post-Doctoral Researcher - Rs. 2,000">Student/Post-Doctoral Researcher - Rs. 2,000</option>
+                            <option value="Life Member (Individual) - Rs. 9,440 (Rs. 8,000 + 18% GST)">Life Member (Individual) - Rs. 9,440 (Rs. 8,000 + 18% GST)</option>
+                            <option value="Life Member (Organization) - Rs. 28,320 (Rs. 24,000 + 18% GST)">Life Member (Organization) - Rs. 28,320 (Rs. 24,000 + 18% GST)</option>
+                            <option value="General Member (Individual) - Rs. 5,900 (Rs. 5,000 + 18% GST)">General Member (Individual) - Rs. 5,900 (Rs. 5,000 + 18% GST)</option>
+                            <option value="General Member (Organization) - Rs. 17,700 (Rs. 15,000 + 18% GST)">General Member (Organization) - Rs. 17,700 (Rs. 15,000 + 18% GST)</option>
+                            <option value="Student/Post-Doctoral Researcher - Rs. 2,360 (Rs. 2,000 + 18% GST)">Student/Post-Doctoral Researcher - Rs. 2,360 (Rs. 2,000 + 18% GST)</option>
                           </select>
                           {errors.membershipTypeDropdown && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.membershipTypeDropdown}</p>}
                         </div>
@@ -885,25 +900,61 @@ export default function MembershipFormClient() {
                     >
                       {/* Last Academic Degree Field */}
                       <div className="space-y-3">
-                        <h3 className="text-sm font-bold text-brs-900">Last Academic Degree <span className="text-red-500">*</span></h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-brs-900">Last Academic Degree <span className="text-red-500">*</span></h3>
+                          {(selectedType === "life-individual" || selectedType === "life-org") && (
+                            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              Ph.D Mandatory for Life Membership
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                            <input type="radio" name="academicDegree" value="Ph.D" onChange={handleInputChange} checked={formData.academicDegree === 'Ph.D'} className="accent-brs-600" />
-                            Ph.D
+                            <input 
+                              type="radio" 
+                              name="academicDegree" 
+                              value="Ph.D" 
+                              onChange={handleInputChange} 
+                              checked={formData.academicDegree === 'Ph.D'} 
+                              className="accent-brs-600" 
+                            />
+                            <span className="font-medium text-slate-900">Ph.D</span>
                           </label>
-                          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                            <input type="radio" name="academicDegree" value="Masters" onChange={handleInputChange} checked={formData.academicDegree === 'Masters'} className="accent-brs-600" />
-                            Masters
+                          <label className={`flex items-center gap-2 text-sm ${(selectedType === "life-individual" || selectedType === "life-org") ? 'text-slate-400 opacity-60 cursor-not-allowed select-none' : 'text-slate-700 cursor-pointer'}`}>
+                            <input 
+                              type="radio" 
+                              name="academicDegree" 
+                              value="Masters" 
+                              onChange={handleInputChange} 
+                              checked={formData.academicDegree === 'Masters'} 
+                              disabled={selectedType === "life-individual" || selectedType === "life-org"}
+                              className="accent-brs-600 disabled:opacity-50" 
+                            />
+                            <span>Masters</span>
+                            {(selectedType === "life-individual" || selectedType === "life-org") && (
+                              <span className="text-[10px] text-slate-400 italic">(Unavailable for Life Members)</span>
+                            )}
                           </label>
-                          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                            <input type="radio" name="academicDegree" value="Undergraduate" onChange={handleInputChange} checked={formData.academicDegree === 'Undergraduate'} className="accent-brs-600" />
-                            Undergraduate
+                          <label className={`flex items-center gap-2 text-sm ${(selectedType === "life-individual" || selectedType === "life-org") ? 'text-slate-400 opacity-60 cursor-not-allowed select-none' : 'text-slate-700 cursor-pointer'}`}>
+                            <input 
+                              type="radio" 
+                              name="academicDegree" 
+                              value="Undergraduate" 
+                              onChange={handleInputChange} 
+                              checked={formData.academicDegree === 'Undergraduate'} 
+                              disabled={selectedType === "life-individual" || selectedType === "life-org"}
+                              className="accent-brs-600 disabled:opacity-50" 
+                            />
+                            <span>Undergraduate</span>
+                            {(selectedType === "life-individual" || selectedType === "life-org") && (
+                              <span className="text-[10px] text-slate-400 italic">(Unavailable for Life Members)</span>
+                            )}
                           </label>
                         </div>
                         {errors.academicDegree && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.academicDegree}</p>}
 
-                        {/* Year PhD Awarded Field & Eligibility Guidance Box (Shown ONLY when Ph.D is selected) */}
-                        {((formData.academicDegree || '').toLowerCase().includes('ph')) && (
+                        {/* Year PhD Awarded Field & Eligibility Guidance Box (Shown ONLY for Life Membership when Ph.D is selected) */}
+                        {((formData.academicDegree || '').toLowerCase().includes('ph')) && (selectedType === "life-individual" || selectedType === "life-org") && (
                           <div className="space-y-3 pt-2">
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
                               <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1076,6 +1127,50 @@ export default function MembershipFormClient() {
 
                           <div className="max-w-3xl mx-auto space-y-8 sm:space-y-10">
                             
+                            {/* 0. Fee & 18% GST Breakdown Card */}
+                            {(() => {
+                              const activeTier = MEMBERSHIP_TYPES.find(t => t.id === selectedType);
+                              const bPrice = activeTier?.basePrice || "0";
+                              const gPrice = activeTier?.gstAmount || "0";
+                              const tPrice = activeTier?.price || getSelectedPrice();
+                              const tierDisplayName = activeTier?.name || formData.membershipTypeDropdown || "Membership Fee";
+
+                              return (
+                                <div className="bg-gradient-to-br from-brs-900 via-brs-800 to-[#163832] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-3xl border border-emerald-500/30 text-white shadow-xl relative overflow-hidden">
+                                  <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5 mb-5">
+                                    <div>
+                                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400 block mb-1">Fee Summary & Tax Invoice</span>
+                                      <h4 className="text-lg sm:text-xl font-black text-white tracking-tight">{tierDisplayName}</h4>
+                                    </div>
+                                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+                                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                      <span className="text-xs font-bold text-emerald-300">18% GST Applicable</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                                    <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                                      <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider block mb-1">Base Membership Fee</span>
+                                      <span className="text-base font-bold text-white">₹{bPrice}</span>
+                                    </div>
+                                    <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                                      <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider block mb-1">Applicable GST (18%)</span>
+                                      <span className="text-base font-bold text-emerald-400">+ ₹{gPrice}</span>
+                                    </div>
+                                    <div className="bg-emerald-600/30 rounded-xl p-3 border border-emerald-400/40">
+                                      <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider block mb-1">Total Payable Amount</span>
+                                      <span className="text-xl font-black text-white">₹{tPrice}</span>
+                                    </div>
+                                  </div>
+
+                                  <p className="text-[11px] text-white/70 mt-4 italic text-center sm:text-left">
+                                    ⚠️ Kindly ensure the exact payment amount of <strong className="text-emerald-300">₹{tPrice}</strong> (inclusive of 18% GST) is transferred via UPI or Bank Transfer.
+                                  </p>
+                                </div>
+                              );
+                            })()}
+
                             {/* 1. Instructions */}
                             <div className="bg-white p-5 sm:p-8 rounded-[1.5rem] sm:rounded-3xl border border-slate-200 shadow-sm">
                               <h4 className="text-sm font-black text-brs-900 mb-6 uppercase tracking-[0.2em] flex items-center gap-3">
@@ -1143,10 +1238,15 @@ export default function MembershipFormClient() {
 
                               {/* QR Code Card - MUCH LARGER & FULLY RESPONSIVE */}
                               <div className="bg-white p-5 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-6 group hover:border-brs-600 transition-colors duration-500">
-                                <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
-                                  <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[8px]">03</span>
-                                  Scan to Pay
-                                </h4>
+                                <div className="text-center">
+                                  <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 flex items-center justify-center gap-2 mb-1">
+                                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[8px]">03</span>
+                                    Scan to Pay
+                                  </h4>
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 inline-block">
+                                    Transfer ₹{MEMBERSHIP_TYPES.find(t => t.id === selectedType)?.price || getSelectedPrice()} (Includes 18% GST)
+                                  </span>
+                                </div>
                                 <div className="w-full max-w-[320px] mx-auto aspect-square bg-slate-50 rounded-[1.5rem] sm:rounded-[3rem] flex items-center justify-center relative overflow-hidden border border-slate-100 p-4 sm:p-8 group-hover:scale-105 transition-transform duration-500 shadow-inner">
                                   <Image 
                                     src="/batteryresearchqrsbiqrcode.jpg" 

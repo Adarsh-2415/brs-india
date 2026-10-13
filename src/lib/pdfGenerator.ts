@@ -380,7 +380,7 @@ export async function generateMembershipPDF(params: PDFParams): Promise<Buffer> 
         ['Contact Number', application.contact_number],
         ['Mailing Address', fullAddress],
         ['Membership Category', application.membership_type],
-        ['Application Fee Status', `Paid: INR ${application.amount || '0'}`]
+        ['Application Fee Status', `Paid: INR ${application.amount || '0'} (Includes 18% GST)`]
       ];
 
       currentY = drawTable(doc, 50, currentY, 495, personalRows, [160, 335]) + 15;
